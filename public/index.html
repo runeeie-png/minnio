@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minnio – Samtale med Minna</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F0A06;
+  --bg2: #1A1008;
+  --surface: #231508;
+  --surface2: #2D1C0C;
+  --gold: #C8933A;
+  --gold2: #E0B060;
+  --gold-dim: rgba(200,147,58,0.15);
+  --text: #F0E8DC;
+  --text2: #A8896E;
+  --text3: #6B5540;
+  --sage: #6B8F68;
+  --shadow: rgba(0,0,0,0.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+/* ── SETUP ── */
+#setup-screen {
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; padding:40px 24px; position:relative; z-index:1;
+}
+.setup-inner { max-width:480px; width:100%; text-align:center; }
+.logo-area { margin-bottom:40px; }
+.logo-icon {
+  width:56px; height:56px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; margin:0 auto 16px;
+  box-shadow:0 8px 32px rgba(200,147,58,0.3);
+}
+.logo-name { font-family:'Lora',serif; font-size:1.8rem; color:var(--text); letter-spacing:0.02em; }
+.logo-sub { font-size:0.85rem; color:var(--text3); margin-top:4px; font-weight:300; }
+.setup-card {
+  background:var(--surface); border:1px solid rgba(200,147,58,0.12);
+  border-radius:18px; padding:32px 28px; text-align:left;
+  box-shadow:0 16px 48px rgba(0,0,0,0.4);
+}
+.setup-title { font-family:'Lora',serif; font-size:1.2rem; color:var(--text); margin-bottom:6px; }
+.setup-desc { font-size:0.83rem; color:var(--text2); margin-bottom:24px; line-height:1.6; font-weight:300; }
+.setup-field { margin-bottom:16px; }
+.setup-field label {
+  display:block; font-size:0.72rem; text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--text3); font-weight:500; margin-bottom:7px;
+}
+.setup-field input, .setup-field textarea, .setup-field select {
+  width:100%; padding:12px 14px;
+  background:var(--surface2); border:1px solid rgba(200,147,58,0.15);
+  border-radius:10px; font-family:'DM Sans',sans-serif;
+  font-size:0.92rem; color:var(--text); outline:none; transition:border-color 0.2s;
+}
+.setup-field input:focus, .setup-field textarea:focus, .setup-field select:focus { border-color:var(--gold); }
+.setup-field input::placeholder, .setup-field textarea::placeholder { color:var(--text3); }
+.setup-field textarea { min-height:80px; resize:vertical; line-height:1.55; }
+.setup-field select option { background:var(--surface2); }
+.kw-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:2px; }
+.kw {
+  padding:5px 12px; border-radius:20px; border:1px solid rgba(200,147,58,0.2);
+  font-size:0.78rem; cursor:pointer; transition:all 0.2s; color:var(--text2); background:var(--bg2);
+}
+.kw:hover { border-color:var(--gold); color:var(--text); }
+.kw.on { border-color:var(--gold); background:var(--gold-dim); color:var(--gold2); font-weight:500; }
+.start-btn {
+  width:100%; margin-top:24px; padding:16px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--bg); border:none; border-radius:12px;
+  font-family:'DM Sans',sans-serif; font-size:1rem; font-weight:600;
+  cursor:pointer; transition:all 0.2s; letter-spacing:0.01em;
+}
+.start-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(200,147,58,0.4); }
+.start-btn:disabled { opacity:0.5; transform:none; cursor:not-allowed; }
+
+/* ── CHAT ── */
+#chat-screen { display:none; flex-direction:column; min-height:100vh; position:relative; z-index:1; }
+.chat-header {
+  padding:18px 24px; border-bottom:1px solid rgba(200,147,58,0.08);
+  display:flex; align-items:center; gap:14px;
+  background:rgba(15,10,6,0.92); backdrop-filter:blur(12px);
+  position:sticky; top:0; z-index:10;
+}
+.minna-avatar {
+  width:40px; height:40px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0; box-shadow:0 4px 14px rgba(200,147,58,0.3);
+}
+.minna-info h2 { font-family:'Lora',serif; font-size:0.95rem; color:var(--text); font-weight:500; }
+.minna-status { font-size:0.72rem; color:var(--sage); display:flex; align-items:center; gap:5px; }
+.status-dot { width:6px; height:6px; background:var(--sage); border-radius:50%; }
+.header-progress { margin-left:auto; font-size:0.72rem; color:var(--text3); }
+
+.chat-messages {
+  flex:1; padding:28px 20px 160px;
+  display:flex; flex-direction:column; gap:20px;
+  max-width:640px; width:100%; margin:0 auto;
+}
+.msg { display:flex; gap:12px; animation:msgIn 0.4s cubic-bezier(0.175,0.885,0.32,1.1) both; }
+.msg.user { flex-direction:row-reverse; }
+@keyframes msgIn {
+  from { opacity:0; transform:translateY(12px) scale(0.97); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.msg-avatar {
+  width:34px; height:34px; border-radius:50%;
+  background:var(--surface2); display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0; margin-top:2px;
+}
+.msg.minna .msg-avatar {
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  box-shadow:0 3px 12px rgba(200,147,58,0.25);
+}
+.msg-bubble { max-width:78%; }
+.msg.minna .msg-bubble {
+  background:var(--surface); border:1px solid rgba(200,147,58,0.1);
+  border-radius:4px 18px 18px 18px; padding:16px 18px;
+}
+.msg.user .msg-bubble {
+  background:var(--gold-dim); border:1px solid rgba(200,147,58,0.2);
+  border-radius:18px 4px 18px 18px; padding:14px 18px;
+}
+.msg-text { font-family:'Lora',serif; font-size:0.97rem; line-height:1.7; color:var(--text); }
+.msg.minna .msg-text { font-style:italic; }
+.msg.user .msg-text { font-style:normal; color:rgba(240,232,220,0.9); font-family:'DM Sans',sans-serif; font-size:0.93rem; }
+.msg-time { font-size:0.68rem; color:var(--text3); margin-top:6px; padding:0 4px; }
+.msg.user .msg-time { text-align:right; }
+
+.typing-indicator { display:none; gap:12px; align-items:flex-end; animation:msgIn 0.3s ease both; }
+.typing-indicator.visible { display:flex; }
+.typing-bubble {
+  background:var(--surface); border:1px solid rgba(200,147,58,0.1);
+  border-radius:4px 18px 18px 18px; padding:14px 18px;
+  display:flex; gap:5px; align-items:center;
+}
+.typing-dot { width:7px; height:7px; background:var(--text3); border-radius:50%; animation:typingBounce 1.3s ease infinite; }
+.typing-dot:nth-child(2) { animation-delay:0.15s; }
+.typing-dot:nth-child(3) { animation-delay:0.3s; }
+@keyframes typingBounce {
+  0%,60%,100% { transform:translateY(0); opacity:0.4; }
+  30% { transform:translateY(-6px); opacity:1; }
+}
+
+.chat-input-area {
+  position:fixed; bottom:0; left:0; right:0;
+  padding:16px 20px 28px;
+  background:linear-gradient(transparent, var(--bg) 30%);
+  z-index:10;
+}
+.chat-input-inner { max-width:640px; margin:0 auto; display:flex; gap:10px; align-items:flex-end; }
+.chat-textarea {
+  flex:1; padding:14px 16px;
+  background:var(--surface); border:1px solid rgba(200,147,58,0.2);
+  border-radius:14px; font-family:'DM Sans',sans-serif;
+  font-size:0.93rem; color:var(--text); outline:none;
+  resize:none; min-height:50px; max-height:140px; line-height:1.5;
+  transition:border-color 0.2s;
+}
+.chat-textarea:focus { border-color:var(--gold); }
+.chat-textarea::placeholder { color:var(--text3); }
+.send-btn {
+  width:48px; height:48px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border:none; border-radius:12px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; transition:all 0.2s; flex-shrink:0;
+  box-shadow:0 4px 14px rgba(200,147,58,0.3);
+}
+.send-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(200,147,58,0.4); }
+.send-btn:disabled { opacity:0.4; transform:none; box-shadow:none; cursor:not-allowed; }
+
+.done-banner {
+  display:none; margin:20px auto; max-width:600px; width:calc(100% - 40px);
+  background:linear-gradient(135deg,rgba(107,143,104,0.15),rgba(107,143,104,0.05));
+  border:1px solid rgba(107,143,104,0.3); border-radius:14px;
+  padding:24px; text-align:center;
+}
+.done-banner.visible { display:block; animation:msgIn 0.5s ease both; }
+.done-banner h3 { font-family:'Lora',serif; font-size:1.1rem; color:var(--sage); margin-bottom:8px; }
+.done-banner p { font-size:0.85rem; color:var(--text2); line-height:1.6; font-weight:300; }
+.export-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  margin-top:16px; padding:12px 24px;
+  background:var(--sage); color:white; border:none; border-radius:10px;
+  font-family:'DM Sans',sans-serif; font-size:0.88rem; font-weight:500;
+  cursor:pointer; transition:all 0.2s;
+}
+.export-btn:hover { opacity:0.9; transform:translateY(-1px); }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP ── -->
+<div id="setup-screen">
+  <div class="setup-inner">
+    <div class="logo-area">
+      <div class="logo-icon">✦</div>
+      <div class="logo-name">minnio</div>
+      <div class="logo-sub">Din minnebok</div>
+    </div>
+    <div class="setup-card">
+      <div class="setup-title">Hvem skal Minna snakke med?</div>
+      <div class="setup-desc">Fyll inn litt om personen – jo mer Minna vet, jo mer personlig blir samtalen.</div>
+
+      <div class="setup-field">
+        <label>Navn</label>
+        <input type="text" id="s-name" placeholder="f.eks. Ingrid" />
+      </div>
+      <div class="setup-field">
+        <label>Alder</label>
+        <select id="s-age">
+          <option>60–70 år</option>
+          <option selected>70–80 år</option>
+          <option>80–90 år</option>
+          <option>90+ år</option>
+        </select>
+      </div>
+      <div class="setup-field">
+        <label>Hvor er hun/han fra?</label>
+        <input type="text" id="s-place" placeholder="f.eks. Sunnmøre, Telemark, Lofoten..." />
+      </div>
+      <div class="setup-field">
+        <label>Velg det som passer</label>
+        <div class="kw-row">
+          <div class="kw" onclick="toggleKw(this)">Gård</div>
+          <div class="kw" onclick="toggleKw(this)">Krigen</div>
+          <div class="kw" onclick="toggleKw(this)">Sykepleier</div>
+          <div class="kw" onclick="toggleKw(this)">Lærer</div>
+          <div class="kw" onclick="toggleKw(this)">Fisker</div>
+          <div class="kw" onclick="toggleKw(this)">Mange barn</div>
+          <div class="kw" onclick="toggleKw(this)">Husmorlivet</div>
+          <div class="kw" onclick="toggleKw(this)">Reiste mye</div>
+          <div class="kw" onclick="toggleKw(this)">Religiøs</div>
+          <div class="kw" onclick="toggleKw(this)">Glad i mat</div>
+        </div>
+      </div>
+      <div class="setup-field">
+        <label>Noe Minna bør vite? (valgfritt)</label>
+        <textarea id="s-extra" placeholder="f.eks. Hun er glad i å fortelle om da hun møtte mannen sin..."></textarea>
+      </div>
+      <button class="start-btn" id="start-btn" onclick="startChat()">Start samtalen med Minna →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHAT ── -->
+<div id="chat-screen">
+  <div class="chat-header">
+    <div class="minna-avatar">✦</div>
+    <div class="minna-info">
+      <h2>Minna</h2>
+      <div class="minna-status">
+        <div class="status-dot"></div>
+        <span id="status-text">Klar til å lytte</span>
+      </div>
+    </div>
+    <div class="header-progress" id="header-progress"></div>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    <div class="typing-indicator" id="typing">
+      <div class="msg-avatar" style="background:linear-gradient(135deg,#C8933A,#E0B060);box-shadow:0 3px 12px rgba(200,147,58,0.25);">✦</div>
+      <div class="typing-bubble">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="done-banner" id="done-banner">
+    <h3>Samtalen er fullført ✦</h3>
+    <p>Alle historiene er lagret. Last ned minneboken og ta vare på den.</p>
+    <button class="export-btn" onclick="exportChat()">⬇ Last ned minnebok</button>
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-input-inner">
+      <textarea class="chat-textarea" id="chat-input"
+        placeholder="Skriv svaret ditt her..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+// Når du deployer på Vercel, bytt denne til din faktiske URL:
+// const API_URL = 'https://minnio.app/api/chat';
+const API_URL = '/api/chat';
+
+let profile = {};
+let conversationHistory = [];
+let messageCount = 0;
+const MAX_EXCHANGES = 12;
+let isLoading = false;
+
+function toggleKw(el) { el.classList.toggle('on'); }
+
+function getKeywords() {
+  return Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
+}
+
+function now() {
+  return new Date().toLocaleTimeString('no-NO', { hour:'2-digit', minute:'2-digit' });
+}
+
+function buildSystemPrompt() {
+  const { name, age, place, keywords, extra } = profile;
+  return `Du er Minna – en varm, tålmodig og genuint nysgjerrig samtalepartner som hjelper eldre mennesker fortelle livshistorien sin til familien sin.
+
+Du snakker med ${name}, ${age}${place ? `, fra ${place}` : ''}.
+${keywords.length > 0 ? `Kjent bakgrunn: ${keywords.join(', ')}.` : ''}
+${extra ? `Viktig å vite: ${extra}` : ''}
+
+STIL OG TONE:
+- Snakk enkelt, varmt og naturlig norsk – ikke formelt
+- Aldri mer enn 2-3 setninger per melding
+- Begynn aldri to meldinger på rad med samme ord
+- Bruk ${name}s navn av og til, men ikke hele tiden
+- Vis at du lytter – referer til hva de nettopp sa
+- Bruk korte bekreftelser naturlig: "Det høres fint ut...", "Så interessant..."
+- Aldri to spørsmål på én gang – ett om gangen
+- Vær tålmodig hvis svarene er korte – følg opp rolig
+
+SAMTALENS STRUKTUR:
+Jobb deg naturlig gjennom disse temaene over 10-12 utvekslinger:
+1. Barndom og oppvekststedet
+2. Familien – foreldre og søsken
+3. Skole og ungdomstid
+4. Kjærlighet – å møte mannen/konen sin
+5. Arbeidsliv og det de er stolte av
+6. De vanskeligste tidene og hva som kom dem gjennom
+7. Barnebarn og hva de ønsker å gi videre
+8. Det de er mest takknemlige for i livet
+
+Når du har fullført 10-12 utvekslinger, avslutt varmt og takknemlig.
+Siste melding MÅ inneholde nøyaktig: [SAMTALE_FERDIG]
+
+HUSKEREGEL: Hvis de nevner noe konkret – sted, person, hendelse – følg opp på det i neste melding.`;
+}
+
+async function callAPI(system, messages) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, messages })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'API feil');
+  return data.text;
+}
+
+async function startChat() {
+  const name = document.getElementById('s-name').value.trim() || 'deg';
+  const age = document.getElementById('s-age').value;
+  const place = document.getElementById('s-place').value.trim();
+  const extra = document.getElementById('s-extra').value.trim();
+  const keywords = getKeywords();
+
+  profile = { name, age, place, keywords, extra };
+
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  btn.textContent = 'Starter...';
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('chat-screen').style.display = 'flex';
+
+  updateProgress();
+  showTyping();
+
+  try {
+    const system = buildSystemPrompt();
+    const reply = await callAPI(system, [{ role:'user', content:`Start samtalen. Hils varmt på ${name} og still det første spørsmålet om barndommen.` }]);
+    conversationHistory.push({ role:'assistant', content: reply });
+    hideTyping();
+    addMessage('minna', reply);
+    messageCount++;
+    updateProgress();
+  } catch(e) {
+    hideTyping();
+    addMessage('minna', 'Beklager, det oppsto en feil. Prøv å laste siden på nytt.');
+  }
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  autoResize(input);
+  addMessage('user', text);
+  conversationHistory.push({ role:'user', content: text });
+  messageCount++;
+  updateProgress();
+
+  if (messageCount >= MAX_EXCHANGES * 2) { showDone(); return; }
+
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('status-text').textContent = 'Minna tenker...';
+  showTyping();
+
+  try {
+    const reply = await callAPI(buildSystemPrompt(), conversationHistory);
+    conversationHistory.push({ role:'assistant', content: reply });
+    hideTyping();
+
+    const isDone = reply.includes('[SAMTALE_FERDIG]');
+    const cleanReply = reply.replace('[SAMTALE_FERDIG]', '').trim();
+
+    addMessage('minna', cleanReply);
+    messageCount++;
+    updateProgress();
+
+    if (isDone) setTimeout(showDone, 800);
+  } catch(e) {
+    hideTyping();
+    addMessage('minna', 'Beklager, jeg fikk ikke svar akkurat nå. Prøv igjen.');
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('status-text').textContent = 'Lytter...';
+}
+
+function addMessage(role, text) {
+  const container = document.getElementById('chat-messages');
+  const typing = document.getElementById('typing');
+
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+
+  const avatarChar = role === 'minna' ? '✦' : (profile.name?.[0]?.toUpperCase() || '?');
+  const avatarStyle = role === 'minna'
+    ? 'background:linear-gradient(135deg,#C8933A,#E0B060);box-shadow:0 3px 12px rgba(200,147,58,0.25);'
+    : '';
+
+  msg.innerHTML = `
+    <div class="msg-avatar" style="${avatarStyle}">${avatarChar}</div>
+    <div class="msg-bubble">
+      <div class="msg-text">${escapeHtml(text)}</div>
+      <div class="msg-time">${now()}</div>
+    </div>`;
+
+  container.insertBefore(msg, typing);
+  scrollToBottom();
+}
+
+function showTyping() { document.getElementById('typing').classList.add('visible'); scrollToBottom(); }
+function hideTyping() { document.getElementById('typing').classList.remove('visible'); }
+
+function showDone() {
+  document.getElementById('chat-input').disabled = true;
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('status-text').textContent = 'Samtalen er ferdig';
+  const banner = document.getElementById('done-banner');
+  banner.classList.add('visible');
+  document.getElementById('chat-messages').appendChild(banner);
+  scrollToBottom();
+}
+
+function updateProgress() {
+  const pct = Math.min(100, Math.round((messageCount / (MAX_EXCHANGES * 2)) * 100));
+  document.getElementById('header-progress').textContent = `${pct}% fullført`;
+}
+
+function scrollToBottom() { setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50); }
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function exportChat() {
+  const date = new Date().toLocaleDateString('no-NO');
+  let content = `MINNIO – MINNEBOK\n${profile.name || ''} · ${date}\n${'═'.repeat(50)}\n\n`;
+
+  let currentQ = null;
+  conversationHistory.forEach(msg => {
+    if (msg.role === 'assistant') {
+      currentQ = msg.content.replace('[SAMTALE_FERDIG]','').trim();
+    } else if (msg.role === 'user' && currentQ) {
+      content += `${currentQ}\n\n   "${msg.content}"\n\n${'─'.repeat(40)}\n\n`;
+      currentQ = null;
+    }
+  });
+
+  const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `minnio-${(profile.name||'minnebok').toLowerCase()}-${date.replace(/\./g,'-')}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
