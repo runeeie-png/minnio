@@ -2,7 +2,7 @@
 // Basert på GuideLLM (2026), HEART-taksonomi (2024), og Cause-Aware Empathetic CoT (2024)
 //
 // Per tur gjør Claude internt:
-// 1. ANALYSE av bestemors siste svar (innhold, emosjon, narrative-rikhet)
+// 1. ANALYSE av fortellerens siste svar (innhold, emosjon, narrative-rikhet)
 // 2. MEMORY-oppdatering (hva har vi lært?)
 // 3. NAVIGASJON (hvor er vi i livshistorien?)
 // 4. RESPONS (Minnas faktiske melding)
@@ -39,16 +39,16 @@ MINNE FRA SAMTALEN SÅ LANGT
 VIKTIGE FAKTA NEVNT:
 ${memory.facts?.map(f => `• ${f}`).join('\n') || '(ingen så langt)'}
 
-EMOSJONELLE TRÅDER (ting hun har følt sterkt om):
+EMOSJONELLE TRÅDER (ting personen har følt sterkt om):
 ${memory.emotional_threads?.map(t => `• ${t}`).join('\n') || '(ingen så langt)'}
 
-PERSONER HUN HAR NEVNT:
+PERSONER NEVNT:
 ${memory.people?.map(p => `• ${p}`).join('\n') || '(ingen så langt)'}
 
 NÅVÆRENDE TEMA: ${memory.current_topic || 'ikke fastsatt'}
 SCENE-STATUS: ${memory.scene_depth || 'starter'}
 
-Bruk dette til å koble nye ting til gamle ting. Hvis hun nevner en person eller et sted som er kjent, vis at du husker. Men ALDRI gjenta ordene hennes ordrett.`;
+Bruk dette til å koble nye ting til gamle ting. Hvis personen nevner en person eller et sted som er kjent, vis at du husker. Men ALDRI gjenta ordene tilbake ordrett.`;
     }
 
     // CHAIN-OF-THOUGHT-instruksjoner som tvinger resonering før respons
@@ -61,11 +61,11 @@ DIN INTERNE PROSESS (CHAIN-OF-THOUGHT)
 Før du genererer responsen din, må du gå gjennom denne resoneringen INTERNT (vises ikke til brukeren).
 Skriv resoneringen din inni <tenker>...</tenker>-tagger. Etter taggene kommer den faktiske responsen din.
 
-STEG 1: HVA SA HUN?
-- Hvilke konkrete ord, navn, steder eller hendelser nevner hun?
+STEG 1: HVA SA PERSONEN?
+- Hvilke konkrete ord, navn, steder eller hendelser nevnes?
 - Hva er den richeste detaljen (HEART-elementer: sansevivenhet, emosjon, plottvolum)?
 
-STEG 2: HVA FØLER HUN?
+STEG 2: HVA FØLER PERSONEN?
 - Hvilken emosjonell tone har svaret? (glede, sorg, stolthet, lengsel, nostalgi, smerte, lettelse, varme, etc.)
 - Hva forårsaker denne følelsen? (årsaks-bevissthet er nøkkelen til ekte empati)
 
@@ -76,16 +76,16 @@ STEG 3: HVA SKAL JEG GRAVE I?
 
 STEG 4: HVILKEN RESPONS-TYPE?
 Velg ÉN:
-- A) STILLE SPØRSMÅL (bruk oftest) – bare neste spørsmål, ingen kommentar til det hun sa
+- A) STILLE SPØRSMÅL (bruk oftest) – bare neste spørsmål, ingen kommentar til det som ble sagt
 - B) FØLELSESREFLEKSJON – navngi følelsen kort, så still mykt spørsmål
 - C) KORT BEKREFTELSE + SPØRSMÅL – ett ord ("Ja." "Mhm." "Tenk det.") + spørsmål
 - D) NY VINKEL – bytt tema mykt (kun når scenen er ferdig)
 
 STEG 5: SJEKK FOR PAPEGØYE
 Før du skriver responsen, sjekk:
-- Gjentar jeg ordene hennes? → SKRIV OM
+- Gjentar jeg ordene som nettopp ble sagt? → SKRIV OM
 - Begynner jeg med "Så du..." eller "Du nevnte..."? → SKRIV OM
-- Oppsummerer jeg det hun sa? → SKRIV OM
+- Oppsummerer jeg det som ble sagt? → SKRIV OM
 - Er det mer enn 2 setninger? → FORKORT
 - Stiller jeg to spørsmål? → FJERN ETT
 
@@ -165,7 +165,8 @@ FORMAT PÅ DITT SVAR
 
 // Plukker ut navnet fra system-prompten for å bruke i formatet
 function getNameFromSystem(system) {
-  if (!system) return 'henne';
-  const match = system.match(/hjelper (\w+)/);
-  return match ? match[1] : 'henne';
+  if (!system) return 'personen';
+  // Den nye prompten har format "DU SNAKKER MED: NAVN..."
+  const match = system.match(/DU SNAKKER MED:\s*(\S+)/);
+  return match ? match[1].replace(/[,.]$/, '') : 'personen';
 }
