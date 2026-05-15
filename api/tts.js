@@ -22,18 +22,14 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
           "Accept": "audio/mpeg",
         },
-      body: JSON.stringify({
+     body: JSON.stringify({
   text: text,
-  model_id: "eleven_multilingual_v3",
+  model_id: "eleven_flash_v2_5",
   voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.75,
-            style: 0.3,
-            use_speaker_boost: true,
-          },
-        }),
-      }
-    );
+    stability: 0.6,
+    similarity_boost: 0.75,
+  },
+}),
 
     if (!response.ok) {
       const errorText = await response.text();
