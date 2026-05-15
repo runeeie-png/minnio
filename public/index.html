@@ -396,7 +396,7 @@ const API_STT = '/api/stt';
 let profile = {};
 let conversationHistory = [];
 let messageCount = 0;
-const MAX_EXCHANGES = 12;
+const MAX_EXCHANGES = 28;
 let isLoading = false;
 let mode = 'voice';
 
@@ -595,7 +595,7 @@ async function startChat() {
 
   try {
     const system = buildSystemPrompt();
-    const reply = await callChat(system, [{ role:'user', content:`Start samtalen. Hils varmt på ${name} og still det første spørsmålet om barndommen.` }]);
+   const reply = await callChat(system, [{ role:'user', content:`Start samtalen. Hils kort og varmt på ${name} (én setning). Forklar at dere skal snakke i ro, og at det ikke finnes feil svar. Avslutt med ett sanselig åpningsspørsmål: be henne lukke øynene og fortelle om det første bildet som dukker opp fra barndommen.` }]);
     conversationHistory.push({ role:'assistant', content: reply });
     hideTyping();
     addMessage('minna', reply);
