@@ -334,6 +334,10 @@ const API_STT = '/api/stt';
 const SESSION_ID = window.location.pathname.split('/').filter(Boolean).pop();
 const API_SESSION = `/api/session/${SESSION_ID}`;
 
+// Logg for debugging (synlig i browser-konsollen)
+console.log('Minnio: pathname =', window.location.pathname);
+console.log('Minnio: SESSION_ID =', SESSION_ID);
+
 const MAX_EXCHANGES = 28;
 
 // State
@@ -369,8 +373,12 @@ let saveTimer = null;
 // ═══════════════════════════════════════════════════════════
 
 async function loadSession() {
-  if (!SESSION_ID || SESSION_ID.length < 4) {
-    showError('Lenken ser ut til å være ufullstendig. Be om å få lenken på nytt fra den som ga deg den.');
+  // Sjekk at vi faktisk har en ID i URL-en
+  // ID-er er 8 tegn lange. Hvis vi får 'index.html', 's', eller noe annet, er det feil.
+  const invalidIds = ['index.html', 's', 'index', '', undefined, null];
+  
+  if (!SESSION_ID || SESSION_ID.length < 6 || invalidIds.includes(SESSION_ID)) {
+    showError('Lenken er ikke riktig. Den må se ut som: minnio.app/s/abc12345 – be om å få lenken på nytt fra den som ga deg den.');
     return;
   }
 
@@ -914,7 +922,7 @@ async function unpauseConversation() {
 function pauseConversation() {
   conversationActive = false;
   if (myvad) myvad.pause();
-  if (currentAudio) currentAudio.pause();
+  stopCurrentAudio();
   isMinnaSpeaking = false;
   const btn = document.getElementById('mic-btn');
   btn.classList.remove('recording');
@@ -924,10 +932,37 @@ function pauseConversation() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// TTS
+// TTS – robust mot race conditions
 // ═══════════════════════════════════════════════════════════
 
+// Hvert TTS-kall får unikt token. Hvis et nyere kall starter,
+// avbrytes gamle kall stille. Dette forhindrer at to stemmer
+// overlapper hvis bruker svarer raskt eller systemet er trått.
+let ttsToken = 0;
+
+function stopCurrentAudio() {
+  if (currentAudio) {
+    try {
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio.src = '';
+      currentAudio.load();
+    } catch (e) {
+      console.warn('stopCurrentAudio:', e.message);
+    }
+    currentAudio = null;
+  }
+}
+
 async function playTTS(text) {
+  // 1. Generer unikt token for dette kallet
+  const myToken = ++ttsToken;
+
+  // 2. Stopp alt som måtte spille akkurat nå
+  stopCurrentAudio();
+
   try {
     isMinnaSpeaking = true;
     if (myvad && conversationActive) myvad.pause();
@@ -937,25 +972,52 @@ async function playTTS(text) {
     document.getElementById('minna-avatar').classList.add('speaking');
     setStatus('Minna snakker...');
 
+    // 3. Fetch TTS-lyd fra serveren
     const response = await fetch(API_TTS, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
 
+    // 4. Sjekk: har et nyere kall tatt over mens vi ventet på serveren?
+    if (myToken !== ttsToken) {
+      console.log('TTS avbrutt (nyere kall) – fetch ferdig');
+      return;
+    }
+
     if (!response.ok) throw new Error('TTS feilet');
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-    if (currentAudio) currentAudio.pause();
-    currentAudio = new Audio(url);
+
+    // 5. Siste sjekk før vi spiller av
+    if (myToken !== ttsToken) {
+      URL.revokeObjectURL(url);
+      console.log('TTS avbrutt (nyere kall) – blob klar');
+      return;
+    }
+
+    // 6. Stopp alt på nytt – en sikkerhetsnett hvis noe har startet
+    stopCurrentAudio();
+
+    const audio = new Audio(url);
+    currentAudio = audio;
 
     return new Promise((resolve) => {
-      currentAudio.onended = () => {
+      audio.onended = () => {
+        // Bare reagér hvis dette fortsatt er den aktive lyden
+        if (audio !== currentAudio || myToken !== ttsToken) {
+          URL.revokeObjectURL(url);
+          resolve();
+          return;
+        }
         document.getElementById('minna-avatar').classList.remove('speaking');
         URL.revokeObjectURL(url);
+        currentAudio = null;
         isMinnaSpeaking = false;
+        // Vent litt før vi lytter igjen – gir bestemor/bestefar tid til å tenke
         setTimeout(() => {
-          if (conversationActive && myvad) {
+          // Sjekk en gang til at ingen nye TTS-kall har startet
+          if (myToken === ttsToken && conversationActive && myvad && !isMinnaSpeaking) {
             myvad.start();
             document.getElementById('mic-btn').classList.add('listening');
             setStatus('Snakk når du er klar...', 'listening');
@@ -963,21 +1025,43 @@ async function playTTS(text) {
           resolve();
         }, 700);
       };
-      currentAudio.onerror = () => {
+
+      audio.onerror = (err) => {
+        if (audio !== currentAudio) { resolve(); return; }
+        console.warn('Audio error:', err);
         document.getElementById('minna-avatar').classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        currentAudio = null;
         isMinnaSpeaking = false;
-        if (conversationActive && myvad) {
+        if (myToken === ttsToken && conversationActive && myvad) {
           myvad.start();
           document.getElementById('mic-btn').classList.add('listening');
         }
         resolve();
       };
-      currentAudio.play();
+
+      // Faktisk start avspilling
+      audio.play().catch(err => {
+        console.warn('audio.play() avvist:', err.message);
+        // Browser kan blokkere autoplay – håndter mykt
+        if (myToken === ttsToken) {
+          isMinnaSpeaking = false;
+          document.getElementById('minna-avatar').classList.remove('speaking');
+          if (conversationActive && myvad) {
+            myvad.start();
+            document.getElementById('mic-btn').classList.add('listening');
+          }
+        }
+        resolve();
+      });
     });
   } catch (e) {
-    isMinnaSpeaking = false;
-    document.getElementById('minna-avatar').classList.remove('speaking');
-    if (conversationActive && myvad) myvad.start();
+    // Bare nullstill hvis dette kallet fortsatt er det aktive
+    if (myToken === ttsToken) {
+      isMinnaSpeaking = false;
+      document.getElementById('minna-avatar').classList.remove('speaking');
+      if (conversationActive && myvad) myvad.start();
+    }
     console.error('TTS error:', e);
   }
 }
@@ -988,6 +1072,12 @@ async function playTTS(text) {
 
 async function processUserMessage(text) {
   if (!text || isLoading) return;
+  // Sikkerhet: ikke prosesser hvis Minna fortsatt snakker
+  // (forhindrer at VAD-feiltreff under TTS resulterer i nytt API-kall)
+  if (isMinnaSpeaking) {
+    console.log('Ignorerer input – Minna snakker fortsatt');
+    return;
+  }
 
   addMessage('user', text, true);
   conversationHistory.push({ role: 'user', content: text });
