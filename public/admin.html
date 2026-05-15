@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minnio – Opprett samtale</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F0A06; --bg2: #1A1008; --surface: #231508; --surface2: #2D1C0C;
+  --gold: #C8933A; --gold2: #E0B060; --gold-dim: rgba(200,147,58,0.15);
+  --text: #F0E8DC; --text2: #A8896E; --text3: #6B5540; --sage: #6B8F68;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:var(--bg); color:var(--text); min-height:100vh;
+  font-family:'DM Sans',sans-serif;
+  display:flex; align-items:center; justify-content:center; padding:32px 20px;
+}
+.wrap { max-width:560px; width:100%; }
+h1 {
+  font-family:'Lora',serif; font-size:1.8rem; margin-bottom:8px;
+  text-align:center; color:var(--gold2);
+}
+.sub { font-size:0.88rem; color:var(--text3); text-align:center; margin-bottom:32px; }
+.card {
+  background:var(--surface); border:1px solid rgba(200,147,58,0.12);
+  border-radius:16px; padding:28px; margin-bottom:20px;
+}
+.section { font-family:'Lora',serif; color:var(--gold2); margin-bottom:16px; font-size:1.1rem; }
+.row { margin-bottom:14px; }
+.row label {
+  display:block; font-size:0.7rem; text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--text3); font-weight:500; margin-bottom:6px;
+}
+.row input, .row select, .row textarea {
+  width:100%; padding:11px 13px;
+  background:var(--surface2); border:1px solid rgba(200,147,58,0.15);
+  border-radius:8px; font-family:'DM Sans',sans-serif;
+  font-size:0.92rem; color:var(--text); outline:none;
+}
+.row input:focus, .row select:focus, .row textarea:focus { border-color:var(--gold); }
+.row textarea { min-height:70px; resize:vertical; line-height:1.5; }
+.kw-row { display:flex; flex-wrap:wrap; gap:6px; }
+.kw {
+  padding:5px 11px; border-radius:18px; border:1px solid rgba(200,147,58,0.2);
+  font-size:0.76rem; cursor:pointer; color:var(--text2); background:var(--bg2);
+  user-select:none;
+}
+.kw.on { border-color:var(--gold); background:var(--gold-dim); color:var(--gold2); }
+.go-btn {
+  width:100%; padding:15px; margin-top:8px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--bg); border:none; border-radius:10px;
+  font-size:1rem; font-weight:600; cursor:pointer; transition:transform 0.2s;
+}
+.go-btn:hover { transform:translateY(-2px); }
+.go-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+#result { display:none; }
+#result.visible { display:block; animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); }}
+.result-card {
+  background:linear-gradient(135deg,rgba(107,143,104,0.15),rgba(107,143,104,0.05));
+  border:1px solid rgba(107,143,104,0.3); border-radius:14px; padding:24px;
+}
+.result-card h3 {
+  font-family:'Lora',serif; color:var(--sage); font-size:1.2rem; margin-bottom:12px;
+}
+.link-box {
+  background:var(--bg2); border:1px solid var(--gold);
+  border-radius:8px; padding:14px; margin:14px 0;
+  font-family:monospace; font-size:0.92rem; color:var(--gold2);
+  word-break:break-all;
+}
+.copy-btn {
+  padding:10px 18px; background:var(--gold); color:var(--bg);
+  border:none; border-radius:8px; font-size:0.85rem; font-weight:500;
+  cursor:pointer; margin-right:8px;
+}
+.sms-template {
+  background:var(--bg2); border:1px solid rgba(200,147,58,0.2);
+  border-radius:8px; padding:14px; margin-top:14px;
+  font-size:0.88rem; line-height:1.6; color:var(--text2);
+  white-space:pre-wrap;
+}
+.note { font-size:0.78rem; color:var(--text3); margin-top:12px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Minnio – Opprett samtale</h1>
+  <div class="sub">For piloten – lag en samtale-lenke manuelt og send til kunden</div>
+
+  <div class="card">
+    <div class="section">Bestemor / forteller</div>
+    <div class="row">
+      <label>Navn *</label>
+      <input type="text" id="name" placeholder="f.eks. Ingrid">
+    </div>
+    <div class="row">
+      <label>Alder</label>
+      <select id="age">
+        <option>60–70 år</option>
+        <option selected>70–80 år</option>
+        <option>80–90 år</option>
+        <option>90+ år</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Hvor fra</label>
+      <input type="text" id="place" placeholder="f.eks. Sunnmøre">
+    </div>
+    <div class="row">
+      <label>Bakgrunn (klikk det som passer)</label>
+      <div class="kw-row" id="kwrow">
+        <div class="kw" onclick="this.classList.toggle('on')">Gård</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Krigen</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Sykepleier</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Lærer</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Fisker</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Mange barn</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Husmorlivet</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Reiste mye</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Religiøs</div>
+        <div class="kw" onclick="this.classList.toggle('on')">Glad i mat</div>
+      </div>
+    </div>
+    <div class="row">
+      <label>Annet Minna bør vite</label>
+      <textarea id="extra" placeholder="f.eks. Hun mistet mannen sin for noen år siden..."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section">Kjøper (familie)</div>
+    <div class="row">
+      <label>Navn på kjøper</label>
+      <input type="text" id="buyer-name" placeholder="f.eks. Synnøve">
+    </div>
+    <div class="row">
+      <label>E-post (boken sendes hit)</label>
+      <input type="email" id="buyer-email" placeholder="synnove@example.no">
+    </div>
+    <div class="row">
+      <label>Bestemors telefonnummer</label>
+      <input type="tel" id="buyer-phone" placeholder="+47 12345678">
+    </div>
+    <div class="row">
+      <label>Pakke</label>
+      <select id="tier">
+        <option value="digital">Digital (499 kr)</option>
+        <option value="innbundet" selected>Innbundet (1 199 kr)</option>
+        <option value="arvepakke">Arvepakken (2 499 kr)</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="go-btn" id="create-btn" onclick="createSession()">Opprett samtale →</button>
+
+  <div id="result" style="margin-top:24px;">
+    <div class="result-card">
+      <h3>✓ Samtale opprettet</h3>
+      <p style="font-size:0.88rem; color:var(--text2); margin-bottom:8px;">Send denne lenken til bestemor:</p>
+      <div class="link-box" id="link"></div>
+      <button class="copy-btn" onclick="copyLink()">📋 Kopier lenke</button>
+      <button class="copy-btn" onclick="copySms()" style="background:var(--sage); color:white;">📱 Kopier SMS-tekst</button>
+      <div class="note">SMS-tekst klar til å lime inn i meldinger-appen din:</div>
+      <div class="sms-template" id="sms"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function createSession() {
+  const btn = document.getElementById('create-btn');
+  const name = document.getElementById('name').value.trim();
+  if (!name) { alert('Du må skrive inn navn på bestemor'); return; }
+
+  const keywords = Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
+  
+  const profile = {
+    name,
+    age: document.getElementById('age').value,
+    place: document.getElementById('place').value.trim(),
+    keywords,
+    extra: document.getElementById('extra').value.trim()
+  };
+  
+  const buyer = {
+    name: document.getElementById('buyer-name').value.trim(),
+    email: document.getElementById('buyer-email').value.trim(),
+    phone: document.getElementById('buyer-phone').value.trim()
+  };
+  
+  const tier = document.getElementById('tier').value;
+
+  btn.disabled = true;
+  btn.textContent = 'Oppretter...';
+
+  try {
+    const res = await fetch('/api/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile, buyer, tier })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Feilet');
+
+    const fullUrl = data.fullUrl;
+    document.getElementById('link').textContent = fullUrl;
+    
+    const buyerLabel = buyer.name || 'familien din';
+    document.getElementById('sms').textContent = 
+`Hei ${name}!
+
+${buyerLabel} har laget en spesiell gave til deg – en samtale om livet ditt og historiene dine, som blir til en bok familien kan ta vare på.
+
+Trykk på lenken under når du har 30-40 min ro. Du kan også pause og fortsette senere – alt blir lagret.
+
+${fullUrl}
+
+Lykke til – vi gleder oss til å høre fra deg ✦`;
+
+    document.getElementById('result').classList.add('visible');
+    btn.disabled = false;
+    btn.textContent = 'Opprett ny samtale →';
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  } catch (err) {
+    alert('Noe gikk galt: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Opprett samtale →';
+  }
+}
+
+function copyLink() {
+  const text = document.getElementById('link').textContent;
+  navigator.clipboard.writeText(text);
+  event.target.textContent = '✓ Kopiert!';
+  setTimeout(() => { event.target.textContent = '📋 Kopier lenke'; }, 1500);
+}
+
+function copySms() {
+  const text = document.getElementById('sms').textContent;
+  navigator.clipboard.writeText(text);
+  event.target.textContent = '✓ Kopiert!';
+  setTimeout(() => { event.target.textContent = '📱 Kopier SMS-tekst'; }, 1500);
+}
+</script>
+</body>
+</html>
