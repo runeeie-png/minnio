@@ -8,10 +8,22 @@ export default async function handler(req, res) {
  
   try {
     const { text } = req.body;
-    if (!text) return res.status(400).json({ error: "Missing text" });
+    if (!text) return res.status(400).json({ error: "Missing text", debug: "No text in request body" });
  
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const voiceId = process.env.ELEVENLABS_VOICE_ID;
+ 
+    if (!apiKey) return res.status(400).json({ error: "Missing API key", debug: "ELEVENLABS_API_KEY not set" });
+    if (!voiceId) return res.status(400).json({ error: "Missing Voice ID", debug: "ELEVENLABS_VOICE_ID not set" });
+ 
+    const requestBody = {
+      text: text,
+      model_id: "eleven_multilingual_v2",
+      voice_settings: {
+        stability: 0.6,
+        similarity_boost: 0.75,
+      },
+    };
  
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -22,21 +34,21 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
           "Accept": "audio/mpeg",
         },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_flash_v2_5",
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.75,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
  
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("ElevenLabs error:", errorText);
-      return res.status(response.status).json({ error: errorText });
+      return res.status(400).json({
+        error: "ElevenLabs avviste forespoerselen",
+        elevenLabsStatus: response.status,
+        elevenLabsResponse: errorText,
+        voiceIdUsed: voiceId.substring(0, 10) + "...",
+        apiKeyPrefix: apiKey.substring(0, 10) + "...",
+        textLength: text.length,
+        textSample: text.substring(0, 100),
+      });
     }
  
     const arrayBuffer = await response.arrayBuffer();
@@ -47,8 +59,8 @@ export default async function handler(req, res) {
     return res.status(200).send(buffer);
  
   } catch (err) {
-    console.error("TTS error:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
+
  
