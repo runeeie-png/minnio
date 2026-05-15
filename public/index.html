@@ -727,17 +727,51 @@ function escapeHtml(text) {
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-function exportChat() {
-  const date = new Date().toLocaleDateString('no-NO');
-  let content = `MINNIO – MINNEBOK\n${profile.name || ''} · ${date}\n${'═'.repeat(50)}\n\n`;
-  let currentQ = null;
-  conversationHistory.forEach(msg => {
-    if (msg.role === 'assistant') {
-      currentQ = msg.content.replace('[SAMTALE_FERDIG]','').trim();
-    } else if (msg.role === 'user' && currentQ) {
-      content += `${currentQ}\n\n   "${msg.content}"\n\n${'─'.repeat(40)}\n\n`;
-      currentQ = null;
-    }
+// ─── Erstatt den gamle exportChat-funksjonen i index.html med denne ───
+
+async function exportChat() {
+  const btn = document.querySelector('.export-btn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Lager minneboken...';
+
+  try {
+    const response = await fetch('/api/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: profile,
+        conversation: conversationHistory,
+        foreword: null,
+        tier: 'digital'
+      })
+    });
+
+    if (!response.ok) throw new Error('PDF-generering feilet');
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toLocaleDateString('no-NO');
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `minnio-${(profile.name||'minnebok').toLowerCase()}-${date.replace(/\./g,'-')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    btn.innerHTML = '✓ Lastet ned!';
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }, 2000);
+
+  } catch (err) {
+    btn.innerHTML = '✗ Noe gikk galt - prøv igjen';
+    btn.disabled = false;
+    console.error('PDF error:', err);
+    setTimeout(() => { btn.innerHTML = originalText; }, 3000);
+  }
+}
   });
   const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
