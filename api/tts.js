@@ -24,7 +24,7 @@ export default async function handler(req, res) {
         },
       body: JSON.stringify({
   text: text,
-  model_id: "eleven_multilingual_v2",
+  model_id: "eleven_multilingual_v3",
   voice_settings: {
             stability: 0.6,
             similarity_boost: 0.75,
