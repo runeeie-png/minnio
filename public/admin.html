@@ -93,10 +93,17 @@ h1 {
   <div class="sub">For piloten – lag en samtale-lenke manuelt og send til kunden</div>
 
   <div class="card">
-    <div class="section">Bestemor / forteller</div>
+    <div class="section">Forteller (mottaker av lenken)</div>
     <div class="row">
       <label>Navn *</label>
-      <input type="text" id="name" placeholder="f.eks. Ingrid">
+      <input type="text" id="name" placeholder="f.eks. Ingrid eller Olav">
+    </div>
+    <div class="row">
+      <label>Kjønn (slik at Minna bruker riktig pronomen)</label>
+      <select id="gender">
+        <option value="kvinne">Kvinne (hun/henne)</option>
+        <option value="mann">Mann (han/ham)</option>
+      </select>
     </div>
     <div class="row">
       <label>Alder</label>
@@ -128,7 +135,7 @@ h1 {
     </div>
     <div class="row">
       <label>Annet Minna bør vite</label>
-      <textarea id="extra" placeholder="f.eks. Hun mistet mannen sin for noen år siden..."></textarea>
+      <textarea id="extra" placeholder="f.eks. Mistet ektefellen for noen år siden. Er glad i å fortelle om barndommen på Sørlandet."></textarea>
     </div>
   </div>
 
@@ -143,7 +150,7 @@ h1 {
       <input type="email" id="buyer-email" placeholder="synnove@example.no">
     </div>
     <div class="row">
-      <label>Bestemors telefonnummer</label>
+      <label>Fortellerens telefonnummer</label>
       <input type="tel" id="buyer-phone" placeholder="+47 12345678">
     </div>
     <div class="row">
@@ -161,7 +168,7 @@ h1 {
   <div id="result" style="margin-top:24px;">
     <div class="result-card">
       <h3>✓ Samtale opprettet</h3>
-      <p style="font-size:0.88rem; color:var(--text2); margin-bottom:8px;">Send denne lenken til bestemor:</p>
+      <p style="font-size:0.88rem; color:var(--text2); margin-bottom:8px;">Send denne lenken til fortelleren:</p>
       <div class="link-box" id="link"></div>
       <button class="copy-btn" onclick="copyLink()">📋 Kopier lenke</button>
       <button class="copy-btn" onclick="copySms()" style="background:var(--sage); color:white;">📱 Kopier SMS-tekst</button>
@@ -175,12 +182,13 @@ h1 {
 async function createSession() {
   const btn = document.getElementById('create-btn');
   const name = document.getElementById('name').value.trim();
-  if (!name) { alert('Du må skrive inn navn på bestemor'); return; }
+  if (!name) { alert('Du må skrive inn navn på fortelleren'); return; }
 
   const keywords = Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
   
   const profile = {
     name,
+    gender: document.getElementById('gender').value,
     age: document.getElementById('age').value,
     place: document.getElementById('place').value.trim(),
     keywords,
