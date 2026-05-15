@@ -18,6 +18,7 @@
   --text2: #A8896E;
   --text3: #6B5540;
   --sage: #6B8F68;
+  --red: #C44848;
   --shadow: rgba(0,0,0,0.4);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -36,7 +37,7 @@ body::after {
   pointer-events:none; z-index:0;
 }
 
-/* ── SETUP ── */
+/* SETUP */
 #setup-screen {
   display:flex; align-items:center; justify-content:center;
   min-height:100vh; padding:40px 24px; position:relative; z-index:1;
@@ -82,6 +83,21 @@ body::after {
 }
 .kw:hover { border-color:var(--gold); color:var(--text); }
 .kw.on { border-color:var(--gold); background:var(--gold-dim); color:var(--gold2); font-weight:500; }
+
+.mode-toggle {
+  display:flex; gap:10px; margin-bottom:20px;
+  background:var(--surface2); padding:6px; border-radius:12px;
+}
+.mode-opt {
+  flex:1; padding:10px; text-align:center;
+  border-radius:8px; cursor:pointer; font-size:0.85rem;
+  color:var(--text2); transition:all 0.2s; font-weight:500;
+}
+.mode-opt.active {
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--bg);
+}
+
 .start-btn {
   width:100%; margin-top:24px; padding:16px;
   background:linear-gradient(135deg,var(--gold),var(--gold2));
@@ -92,7 +108,7 @@ body::after {
 .start-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(200,147,58,0.4); }
 .start-btn:disabled { opacity:0.5; transform:none; cursor:not-allowed; }
 
-/* ── CHAT ── */
+/* CHAT */
 #chat-screen { display:none; flex-direction:column; min-height:100vh; position:relative; z-index:1; }
 .chat-header {
   padding:18px 24px; border-bottom:1px solid rgba(200,147,58,0.08);
@@ -105,6 +121,16 @@ body::after {
   background:linear-gradient(135deg,var(--gold),var(--gold2));
   border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:18px; flex-shrink:0; box-shadow:0 4px 14px rgba(200,147,58,0.3);
+  position:relative;
+}
+.minna-avatar.speaking::after {
+  content:''; position:absolute; inset:-4px;
+  border-radius:50%; border:2px solid var(--gold);
+  animation:speakingPulse 1.2s ease infinite;
+}
+@keyframes speakingPulse {
+  0%,100% { opacity:0.4; transform:scale(1); }
+  50% { opacity:1; transform:scale(1.15); }
 }
 .minna-info h2 { font-family:'Lora',serif; font-size:0.95rem; color:var(--text); font-weight:500; }
 .minna-status { font-size:0.72rem; color:var(--sage); display:flex; align-items:center; gap:5px; }
@@ -112,7 +138,7 @@ body::after {
 .header-progress { margin-left:auto; font-size:0.72rem; color:var(--text3); }
 
 .chat-messages {
-  flex:1; padding:28px 20px 160px;
+  flex:1; padding:28px 20px 200px;
   display:flex; flex-direction:column; gap:20px;
   max-width:640px; width:100%; margin:0 auto;
 }
@@ -143,8 +169,15 @@ body::after {
 .msg-text { font-family:'Lora',serif; font-size:0.97rem; line-height:1.7; color:var(--text); }
 .msg.minna .msg-text { font-style:italic; }
 .msg.user .msg-text { font-style:normal; color:rgba(240,232,220,0.9); font-family:'DM Sans',sans-serif; font-size:0.93rem; }
-.msg-time { font-size:0.68rem; color:var(--text3); margin-top:6px; padding:0 4px; }
-.msg.user .msg-time { text-align:right; }
+
+.replay-btn {
+  margin-top:8px; padding:5px 10px; background:transparent;
+  border:1px solid rgba(200,147,58,0.25); border-radius:6px;
+  font-size:0.72rem; color:var(--text2); cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+  transition:all 0.2s;
+}
+.replay-btn:hover { border-color:var(--gold); color:var(--gold); }
 
 .typing-indicator { display:none; gap:12px; align-items:flex-end; animation:msgIn 0.3s ease both; }
 .typing-indicator.visible { display:flex; }
@@ -161,13 +194,17 @@ body::after {
   30% { transform:translateY(-6px); opacity:1; }
 }
 
+/* INPUT AREA */
 .chat-input-area {
   position:fixed; bottom:0; left:0; right:0;
   padding:16px 20px 28px;
   background:linear-gradient(transparent, var(--bg) 30%);
   z-index:10;
 }
-.chat-input-inner { max-width:640px; margin:0 auto; display:flex; gap:10px; align-items:flex-end; }
+.chat-input-inner { max-width:640px; margin:0 auto; }
+
+/* Text mode */
+.text-input-row { display:flex; gap:10px; align-items:flex-end; }
 .chat-textarea {
   flex:1; padding:14px 16px;
   background:var(--surface); border:1px solid rgba(200,147,58,0.2);
@@ -188,6 +225,36 @@ body::after {
 }
 .send-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(200,147,58,0.4); }
 .send-btn:disabled { opacity:0.4; transform:none; box-shadow:none; cursor:not-allowed; }
+
+/* Voice mode */
+.voice-controls {
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+}
+.voice-status {
+  font-size:0.85rem; color:var(--text2); text-align:center;
+  min-height:20px; font-weight:300;
+}
+.voice-status.recording { color:var(--red); }
+.voice-status.processing { color:var(--gold); }
+.mic-btn {
+  width:80px; height:80px; border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px; color:var(--bg);
+  box-shadow:0 8px 28px rgba(200,147,58,0.4);
+  transition:all 0.2s;
+}
+.mic-btn:hover { transform:translateY(-2px); }
+.mic-btn.recording {
+  background:linear-gradient(135deg,var(--red),#E66060);
+  animation:micPulse 1.5s ease infinite;
+}
+.mic-btn:disabled { opacity:0.5; cursor:not-allowed; }
+@keyframes micPulse {
+  0%,100% { box-shadow:0 8px 28px rgba(196,72,72,0.4); }
+  50% { box-shadow:0 8px 38px rgba(196,72,72,0.7); }
+}
 
 .done-banner {
   display:none; margin:20px auto; max-width:600px; width:calc(100% - 40px);
@@ -210,7 +277,7 @@ body::after {
 </head>
 <body>
 
-<!-- ── SETUP ── -->
+<!-- SETUP -->
 <div id="setup-screen">
   <div class="setup-inner">
     <div class="logo-area">
@@ -221,6 +288,14 @@ body::after {
     <div class="setup-card">
       <div class="setup-title">Hvem skal Minna snakke med?</div>
       <div class="setup-desc">Fyll inn litt om personen – jo mer Minna vet, jo mer personlig blir samtalen.</div>
+
+      <div class="setup-field">
+        <label>Velg samtaleform</label>
+        <div class="mode-toggle">
+          <div class="mode-opt active" onclick="setMode(this,'voice')">🎙 Stemme</div>
+          <div class="mode-opt" onclick="setMode(this,'text')">⌨ Tekst</div>
+        </div>
+      </div>
 
       <div class="setup-field">
         <label>Navn</label>
@@ -263,10 +338,10 @@ body::after {
   </div>
 </div>
 
-<!-- ── CHAT ── -->
+<!-- CHAT -->
 <div id="chat-screen">
   <div class="chat-header">
-    <div class="minna-avatar">✦</div>
+    <div class="minna-avatar" id="minna-avatar">✦</div>
     <div class="minna-info">
       <h2>Minna</h2>
       <div class="minna-status">
@@ -296,34 +371,52 @@ body::after {
 
   <div class="chat-input-area">
     <div class="chat-input-inner">
-      <textarea class="chat-textarea" id="chat-input"
-        placeholder="Skriv svaret ditt her..." rows="1"
-        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMessage()">→</button>
+      <!-- Text input -->
+      <div id="text-input" class="text-input-row" style="display:none">
+        <textarea class="chat-textarea" id="chat-input"
+          placeholder="Skriv svaret ditt her..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendTextMessage()">→</button>
+      </div>
+
+      <!-- Voice input -->
+      <div id="voice-input" class="voice-controls">
+        <div class="voice-status" id="voice-status">Trykk for å snakke</div>
+        <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎙</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// ── CONFIG ──
-// Når du deployer på Vercel, bytt denne til din faktiske URL:
-// const API_URL = 'https://minnio.app/api/chat';
-const API_URL = '/api/chat';
+const API_CHAT = '/api/chat';
+const API_TTS = '/api/tts';
+const API_STT = '/api/stt';
 
 let profile = {};
 let conversationHistory = [];
 let messageCount = 0;
 const MAX_EXCHANGES = 12;
 let isLoading = false;
+let mode = 'voice';
+
+// Recording state
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+// Audio playback
+let currentAudio = null;
 
 function toggleKw(el) { el.classList.toggle('on'); }
-
 function getKeywords() {
   return Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
 }
 
-function now() {
-  return new Date().toLocaleTimeString('no-NO', { hour:'2-digit', minute:'2-digit' });
+function setMode(el, m) {
+  document.querySelectorAll('.mode-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  mode = m;
 }
 
 function buildSystemPrompt() {
@@ -335,34 +428,24 @@ ${keywords.length > 0 ? `Kjent bakgrunn: ${keywords.join(', ')}.` : ''}
 ${extra ? `Viktig å vite: ${extra}` : ''}
 
 STIL OG TONE:
-- Snakk enkelt, varmt og naturlig norsk – ikke formelt
+- Snakk enkelt, varmt og naturlig norsk
 - Aldri mer enn 2-3 setninger per melding
-- Begynn aldri to meldinger på rad med samme ord
 - Bruk ${name}s navn av og til, men ikke hele tiden
 - Vis at du lytter – referer til hva de nettopp sa
-- Bruk korte bekreftelser naturlig: "Det høres fint ut...", "Så interessant..."
-- Aldri to spørsmål på én gang – ett om gangen
-- Vær tålmodig hvis svarene er korte – følg opp rolig
+- Aldri to spørsmål på én gang
+- Vær tålmodig hvis svarene er korte
 
-SAMTALENS STRUKTUR:
-Jobb deg naturlig gjennom disse temaene over 10-12 utvekslinger:
-1. Barndom og oppvekststedet
-2. Familien – foreldre og søsken
-3. Skole og ungdomstid
-4. Kjærlighet – å møte mannen/konen sin
-5. Arbeidsliv og det de er stolte av
-6. De vanskeligste tidene og hva som kom dem gjennom
-7. Barnebarn og hva de ønsker å gi videre
-8. Det de er mest takknemlige for i livet
+SAMTALENS STRUKTUR (10-12 utvekslinger):
+Barndom → Familie → Skole → Kjærlighet → Arbeid → Vanskelige tider → Barnebarn → Takknemlighet
 
-Når du har fullført 10-12 utvekslinger, avslutt varmt og takknemlig.
-Siste melding MÅ inneholde nøyaktig: [SAMTALE_FERDIG]
+Når du har fullført 10-12 utvekslinger, avslutt varmt.
+Siste melding MÅ inneholde: [SAMTALE_FERDIG]
 
-HUSKEREGEL: Hvis de nevner noe konkret – sted, person, hendelse – følg opp på det i neste melding.`;
+HUSKEREGEL: Hvis de nevner noe konkret – sted, person, hendelse – følg opp på det.`;
 }
 
-async function callAPI(system, messages) {
-  const response = await fetch(API_URL, {
+async function callChat(system, messages) {
+  const response = await fetch(API_CHAT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ system, messages })
@@ -372,13 +455,49 @@ async function callAPI(system, messages) {
   return data.text;
 }
 
+async function playTTS(text) {
+  try {
+    document.getElementById('minna-avatar').classList.add('speaking');
+    setStatus('Minna snakker...');
+
+    const response = await fetch(API_TTS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (!response.ok) throw new Error('TTS feilet');
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    if (currentAudio) currentAudio.pause();
+    currentAudio = new Audio(url);
+
+    return new Promise((resolve) => {
+      currentAudio.onended = () => {
+        document.getElementById('minna-avatar').classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      currentAudio.onerror = () => {
+        document.getElementById('minna-avatar').classList.remove('speaking');
+        resolve();
+      };
+      currentAudio.play();
+    });
+  } catch(e) {
+    document.getElementById('minna-avatar').classList.remove('speaking');
+    console.error('TTS error:', e);
+  }
+}
+
 async function startChat() {
   const name = document.getElementById('s-name').value.trim() || 'deg';
   const age = document.getElementById('s-age').value;
   const place = document.getElementById('s-place').value.trim();
   const extra = document.getElementById('s-extra').value.trim();
   const keywords = getKeywords();
-
   profile = { name, age, place, keywords, extra };
 
   const btn = document.getElementById('start-btn');
@@ -388,31 +507,39 @@ async function startChat() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('chat-screen').style.display = 'flex';
 
+  if (mode === 'voice') {
+    document.getElementById('voice-input').style.display = 'flex';
+    document.getElementById('text-input').style.display = 'none';
+  } else {
+    document.getElementById('voice-input').style.display = 'none';
+    document.getElementById('text-input').style.display = 'flex';
+  }
+
   updateProgress();
   showTyping();
 
   try {
     const system = buildSystemPrompt();
-    const reply = await callAPI(system, [{ role:'user', content:`Start samtalen. Hils varmt på ${name} og still det første spørsmålet om barndommen.` }]);
+    const reply = await callChat(system, [{ role:'user', content:`Start samtalen. Hils varmt på ${name} og still det første spørsmålet om barndommen.` }]);
     conversationHistory.push({ role:'assistant', content: reply });
     hideTyping();
     addMessage('minna', reply);
     messageCount++;
     updateProgress();
+
+    if (mode === 'voice') {
+      await playTTS(reply);
+      setStatus('Trykk for å snakke');
+    }
   } catch(e) {
     hideTyping();
     addMessage('minna', 'Beklager, det oppsto en feil. Prøv å laste siden på nytt.');
   }
 }
 
-async function sendMessage() {
-  if (isLoading) return;
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
+async function processUserMessage(text) {
+  if (!text || isLoading) return;
 
-  input.value = '';
-  autoResize(input);
   addMessage('user', text);
   conversationHistory.push({ role:'user', content: text });
   messageCount++;
@@ -421,21 +548,23 @@ async function sendMessage() {
   if (messageCount >= MAX_EXCHANGES * 2) { showDone(); return; }
 
   isLoading = true;
-  document.getElementById('send-btn').disabled = true;
-  document.getElementById('status-text').textContent = 'Minna tenker...';
+  setStatus('Minna tenker...');
   showTyping();
 
   try {
-    const reply = await callAPI(buildSystemPrompt(), conversationHistory);
+    const reply = await callChat(buildSystemPrompt(), conversationHistory);
     conversationHistory.push({ role:'assistant', content: reply });
     hideTyping();
 
     const isDone = reply.includes('[SAMTALE_FERDIG]');
     const cleanReply = reply.replace('[SAMTALE_FERDIG]', '').trim();
-
     addMessage('minna', cleanReply);
     messageCount++;
     updateProgress();
+
+    if (mode === 'voice') {
+      await playTTS(cleanReply);
+    }
 
     if (isDone) setTimeout(showDone, 800);
   } catch(e) {
@@ -444,8 +573,89 @@ async function sendMessage() {
   }
 
   isLoading = false;
-  document.getElementById('send-btn').disabled = false;
-  document.getElementById('status-text').textContent = 'Lytter...';
+  setStatus(mode === 'voice' ? 'Trykk for å snakke' : 'Lytter...');
+}
+
+function sendTextMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+  processUserMessage(text);
+}
+
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = handleRecordingStop;
+    mediaRecorder.start();
+
+    isRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').textContent = '⏹';
+    setStatus('Snakk nå... trykk når du er ferdig', 'recording');
+  } catch(e) {
+    setStatus('Kunne ikke få tilgang til mikrofon');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('mic-btn').textContent = '🎙';
+    document.getElementById('mic-btn').disabled = true;
+    setStatus('Skriver ned hva du sa...', 'processing');
+  }
+}
+
+async function handleRecordingStop() {
+  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+  try {
+    const response = await fetch(API_STT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/webm' },
+      body: audioBlob
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'STT feilet');
+
+    document.getElementById('mic-btn').disabled = false;
+    const text = data.text?.trim();
+    if (text) {
+      await processUserMessage(text);
+    } else {
+      setStatus('Hørte ikke noe. Prøv igjen.');
+    }
+  } catch(e) {
+    document.getElementById('mic-btn').disabled = false;
+    setStatus('Feil ved opptak. Prøv igjen.');
+    console.error('STT error:', e);
+  }
+}
+
+function setStatus(text, type = '') {
+  document.getElementById('status-text').textContent = text;
+  const voiceStatus = document.getElementById('voice-status');
+  if (voiceStatus) {
+    voiceStatus.textContent = text;
+    voiceStatus.className = 'voice-status ' + type;
+  }
 }
 
 function addMessage(role, text) {
@@ -454,30 +664,43 @@ function addMessage(role, text) {
 
   const msg = document.createElement('div');
   msg.className = `msg ${role}`;
-
   const avatarChar = role === 'minna' ? '✦' : (profile.name?.[0]?.toUpperCase() || '?');
   const avatarStyle = role === 'minna'
     ? 'background:linear-gradient(135deg,#C8933A,#E0B060);box-shadow:0 3px 12px rgba(200,147,58,0.25);'
+    : '';
+
+  const replayBtn = role === 'minna' && mode === 'voice'
+    ? `<button class="replay-btn" onclick="replayMessage(this, \`${text.replace(/`/g,'\\`').replace(/'/g,"\\'")}\`)">▶ Hør igjen</button>`
     : '';
 
   msg.innerHTML = `
     <div class="msg-avatar" style="${avatarStyle}">${avatarChar}</div>
     <div class="msg-bubble">
       <div class="msg-text">${escapeHtml(text)}</div>
-      <div class="msg-time">${now()}</div>
+      ${replayBtn}
     </div>`;
 
   container.insertBefore(msg, typing);
   scrollToBottom();
 }
 
+async function replayMessage(btn, text) {
+  btn.disabled = true;
+  await playTTS(text);
+  btn.disabled = false;
+}
+
 function showTyping() { document.getElementById('typing').classList.add('visible'); scrollToBottom(); }
 function hideTyping() { document.getElementById('typing').classList.remove('visible'); }
 
 function showDone() {
-  document.getElementById('chat-input').disabled = true;
-  document.getElementById('send-btn').disabled = true;
-  document.getElementById('status-text').textContent = 'Samtalen er ferdig';
+  if (mode === 'voice') {
+    document.getElementById('mic-btn').disabled = true;
+  } else {
+    document.getElementById('chat-input').disabled = true;
+    document.getElementById('send-btn').disabled = true;
+  }
+  setStatus('Samtalen er ferdig');
   const banner = document.getElementById('done-banner');
   banner.classList.add('visible');
   document.getElementById('chat-messages').appendChild(banner);
@@ -492,7 +715,7 @@ function updateProgress() {
 function scrollToBottom() { setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50); }
 
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
 }
 
 function autoResize(el) {
@@ -507,7 +730,6 @@ function escapeHtml(text) {
 function exportChat() {
   const date = new Date().toLocaleDateString('no-NO');
   let content = `MINNIO – MINNEBOK\n${profile.name || ''} · ${date}\n${'═'.repeat(50)}\n\n`;
-
   let currentQ = null;
   conversationHistory.forEach(msg => {
     if (msg.role === 'assistant') {
@@ -517,7 +739,6 @@ function exportChat() {
       currentQ = null;
     }
   });
-
   const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
