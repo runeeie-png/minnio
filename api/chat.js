@@ -27,6 +27,54 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Mangler messages' });
     }
 
+    // ─── SANERING AV MELDINGER FOR ANTHROPIC API ───
+    // Anthropic har strenge krav til meldingsstruktur:
+    // 1. Første melding må være "user"
+    // 2. Roller må veksle (user/assistant/user/...)
+    // 3. Ingen tomme content-felt
+    // 4. Siste melding bør være "user" (assistant-prefill er ikke støttet på Opus 4.7/4.6/Sonnet 4.6)
+    
+    let safeMessages = messages
+      .filter(m => m && m.content && typeof m.content === 'string' && m.content.trim().length > 0)
+      .map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content.trim()
+      }));
+
+    // Slå sammen påfølgende meldinger med samme rolle
+    const merged = [];
+    for (const msg of safeMessages) {
+      if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+        merged[merged.length - 1].content += '\n\n' + msg.content;
+      } else {
+        merged.push(msg);
+      }
+    }
+    safeMessages = merged;
+
+    // Hvis første melding er "assistant", legg til en system-bekreftelse foran
+    if (safeMessages.length > 0 && safeMessages[0].role === 'assistant') {
+      safeMessages.unshift({
+        role: 'user',
+        content: 'Fortsett samtalen.'
+      });
+    }
+
+    // Hvis ingen meldinger igjen etter sanering, returner feil
+    if (safeMessages.length === 0) {
+      return res.status(400).json({ error: 'Ingen gyldige meldinger etter sanering' });
+    }
+
+    // Hvis siste melding er "assistant", vi har ingenting å svare på.
+    // Dette kan skje hvis resumeConversation kalles uten ny user-input.
+    // Da legger vi til en bro-melding.
+    if (safeMessages[safeMessages.length - 1].role === 'assistant') {
+      safeMessages.push({
+        role: 'user',
+        content: 'Fortsett.'
+      });
+    }
+
     // Bygg ekstra kontekst fra memory hvis det finnes
     let enhancedSystem = system || '';
     if (memory && (memory.facts?.length > 0 || memory.emotional_threads?.length > 0)) {
@@ -122,7 +170,7 @@ FORMAT PÅ DITT SVAR
       model: modelToUse,
       max_tokens: 1024,
       system: enhancedSystem,
-      messages: messages,
+      messages: safeMessages,
     };
 
     // Bare legg til temperature for modeller som faktisk støtter det
