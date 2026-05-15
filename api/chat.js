@@ -116,13 +116,25 @@ FORMAT PÅ DITT SVAR
     // Velg modell – Opus 4.7 for empati, Sonnet 4.6 for kostnad
     const modelToUse = process.env.MINNIO_MODEL || 'claude-opus-4-7';
 
-    const response = await anthropic.messages.create({
+    // Bygg request dynamisk – temperature er deprecated i Opus 4.7
+    // (returnerer 400 hvis sendt med). Vi droppes den for nye modeller.
+    const requestBody = {
       model: modelToUse,
       max_tokens: 1024,
       system: enhancedSystem,
       messages: messages,
-      temperature: 0.85, // litt varierende for naturlig samtale
-    });
+    };
+
+    // Bare legg til temperature for modeller som faktisk støtter det
+    const supportsTemperature = !modelToUse.includes('opus-4-7') 
+      && !modelToUse.includes('opus-4-6')
+      && !modelToUse.includes('sonnet-4-6');
+    
+    if (supportsTemperature) {
+      requestBody.temperature = 0.85;
+    }
+
+    const response = await anthropic.messages.create(requestBody);
 
     const fullText = response.content[0].text;
 
@@ -158,8 +170,17 @@ FORMAT PÅ DITT SVAR
     });
 
   } catch (err) {
-    console.error('Chat API feil:', err);
-    return res.status(500).json({ error: err.message });
+    // Logg detaljert info for debugging i Vercel
+    console.error('Chat API feil:', err.message);
+    if (err.error) console.error('Anthropic error detail:', JSON.stringify(err.error));
+    if (err.status) console.error('Status code:', err.status);
+    
+    // Returner brukervennlig melding
+    return res.status(500).json({ 
+      error: err.message,
+      detail: err.error?.error?.message || err.error?.message || null,
+      status: err.status || 500
+    });
   }
 }
 
