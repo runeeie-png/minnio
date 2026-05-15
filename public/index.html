@@ -772,15 +772,6 @@ async function exportChat() {
     setTimeout(() => { btn.innerHTML = originalText; }, 3000);
   }
 }
-  });
-  const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `minnio-${(profile.name||'minnebok').toLowerCase()}-${date.replace(/\./g,'-')}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 </script>
 </body>
 </html>
