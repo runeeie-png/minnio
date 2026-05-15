@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
-  <style>
+<style>
 :root {
   --bg: #0F0A06;
   --bg2: #1A1008;
@@ -38,7 +38,7 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events:none; z-index:0;
 }
-
+ 
 /* SETUP */
 #setup-screen {
   display:flex; align-items:center; justify-content:center;
@@ -85,7 +85,7 @@ body::after {
 }
 .kw:hover { border-color:var(--gold); color:var(--text); }
 .kw.on { border-color:var(--gold); background:var(--gold-dim); color:var(--gold2); font-weight:500; }
-
+ 
 .mode-toggle {
   display:flex; gap:10px; margin-bottom:20px;
   background:var(--surface2); padding:6px; border-radius:12px;
@@ -99,7 +99,7 @@ body::after {
   background:linear-gradient(135deg,var(--gold),var(--gold2));
   color:var(--bg);
 }
-
+ 
 .start-btn {
   width:100%; margin-top:24px; padding:16px;
   background:linear-gradient(135deg,var(--gold),var(--gold2));
@@ -109,7 +109,7 @@ body::after {
 }
 .start-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(200,147,58,0.4); }
 .start-btn:disabled { opacity:0.5; transform:none; cursor:not-allowed; }
-
+ 
 /* CHAT */
 #chat-screen { display:none; flex-direction:column; min-height:100vh; position:relative; z-index:1; }
 .chat-header {
@@ -138,9 +138,9 @@ body::after {
 .minna-status { font-size:0.72rem; color:var(--sage); display:flex; align-items:center; gap:5px; }
 .status-dot { width:6px; height:6px; background:var(--sage); border-radius:50%; }
 .header-progress { margin-left:auto; font-size:0.72rem; color:var(--text3); }
-
+ 
 .chat-messages {
-  flex:1; padding:28px 20px 200px;
+  flex:1; padding:28px 20px 220px;
   display:flex; flex-direction:column; gap:20px;
   max-width:640px; width:100%; margin:0 auto;
 }
@@ -171,7 +171,7 @@ body::after {
 .msg-text { font-family:'Lora',serif; font-size:0.97rem; line-height:1.7; color:var(--text); }
 .msg.minna .msg-text { font-style:italic; }
 .msg.user .msg-text { font-style:normal; color:rgba(240,232,220,0.9); font-family:'DM Sans',sans-serif; font-size:0.93rem; }
-
+ 
 .replay-btn {
   margin-top:8px; padding:5px 10px; background:transparent;
   border:1px solid rgba(200,147,58,0.25); border-radius:6px;
@@ -180,7 +180,7 @@ body::after {
   transition:all 0.2s;
 }
 .replay-btn:hover { border-color:var(--gold); color:var(--gold); }
-
+ 
 .typing-indicator { display:none; gap:12px; align-items:flex-end; animation:msgIn 0.3s ease both; }
 .typing-indicator.visible { display:flex; }
 .typing-bubble {
@@ -195,7 +195,7 @@ body::after {
   0%,60%,100% { transform:translateY(0); opacity:0.4; }
   30% { transform:translateY(-6px); opacity:1; }
 }
-
+ 
 /* INPUT AREA */
 .chat-input-area {
   position:fixed; bottom:0; left:0; right:0;
@@ -204,7 +204,7 @@ body::after {
   z-index:10;
 }
 .chat-input-inner { max-width:640px; margin:0 auto; }
-
+ 
 /* Text mode */
 .text-input-row { display:flex; gap:10px; align-items:flex-end; }
 .chat-textarea {
@@ -227,7 +227,7 @@ body::after {
 }
 .send-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(200,147,58,0.4); }
 .send-btn:disabled { opacity:0.4; transform:none; box-shadow:none; cursor:not-allowed; }
-
+ 
 /* Voice mode */
 .voice-controls {
   display:flex; flex-direction:column; align-items:center; gap:16px;
@@ -238,26 +238,38 @@ body::after {
 }
 .voice-status.recording { color:var(--red); }
 .voice-status.processing { color:var(--gold); }
+.voice-status.listening { color:var(--sage); }
 .mic-btn {
-  width:80px; height:80px; border-radius:50%;
+  width:88px; height:88px; border-radius:50%;
   background:linear-gradient(135deg,var(--gold),var(--gold2));
   border:none; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  font-size:32px; color:var(--bg);
+  font-size:34px; color:var(--bg);
   box-shadow:0 8px 28px rgba(200,147,58,0.4);
   transition:all 0.2s;
+  position:relative;
 }
 .mic-btn:hover { transform:translateY(-2px); }
 .mic-btn.recording {
   background:linear-gradient(135deg,var(--red),#E66060);
   animation:micPulse 1.5s ease infinite;
 }
+.mic-btn.listening::before {
+  content:''; position:absolute; inset:-8px;
+  border-radius:50%; border:2px solid var(--sage);
+  opacity:0.4;
+  animation:listeningPulse 2s ease infinite;
+}
 .mic-btn:disabled { opacity:0.5; cursor:not-allowed; }
 @keyframes micPulse {
   0%,100% { box-shadow:0 8px 28px rgba(196,72,72,0.4); }
   50% { box-shadow:0 8px 38px rgba(196,72,72,0.7); }
 }
-
+@keyframes listeningPulse {
+  0%,100% { transform:scale(1); opacity:0.4; }
+  50% { transform:scale(1.08); opacity:0.7; }
+}
+ 
 .done-banner {
   display:none; margin:20px auto; max-width:600px; width:calc(100% - 40px);
   background:linear-gradient(135deg,rgba(107,143,104,0.15),rgba(107,143,104,0.05));
@@ -278,7 +290,7 @@ body::after {
 </style>
 </head>
 <body>
-
+ 
 <!-- SETUP -->
 <div id="setup-screen">
   <div class="setup-inner">
@@ -290,7 +302,7 @@ body::after {
     <div class="setup-card">
       <div class="setup-title">Hvem skal Minna snakke med?</div>
       <div class="setup-desc">Fyll inn litt om personen – jo mer Minna vet, jo mer personlig blir samtalen.</div>
-
+ 
       <div class="setup-field">
         <label>Velg samtaleform</label>
         <div class="mode-toggle">
@@ -298,7 +310,7 @@ body::after {
           <div class="mode-opt" onclick="setMode(this,'text')">⌨ Tekst</div>
         </div>
       </div>
-
+ 
       <div class="setup-field">
         <label>Navn</label>
         <input type="text" id="s-name" placeholder="f.eks. Ingrid" />
@@ -339,7 +351,7 @@ body::after {
     </div>
   </div>
 </div>
-
+ 
 <!-- CHAT -->
 <div id="chat-screen">
   <div class="chat-header">
@@ -353,7 +365,7 @@ body::after {
     </div>
     <div class="header-progress" id="header-progress"></div>
   </div>
-
+ 
   <div class="chat-messages" id="chat-messages">
     <div class="typing-indicator" id="typing">
       <div class="msg-avatar" style="background:linear-gradient(135deg,#C8933A,#E0B060);box-shadow:0 3px 12px rgba(200,147,58,0.25);">✦</div>
@@ -364,13 +376,13 @@ body::after {
       </div>
     </div>
   </div>
-
+ 
   <div class="done-banner" id="done-banner">
     <h3>Samtalen er fullført ✦</h3>
     <p>Alle historiene er lagret. Last ned minneboken og ta vare på den.</p>
     <button class="export-btn" onclick="exportChat()">⬇ Last ned minnebok</button>
   </div>
-
+ 
   <div class="chat-input-area">
     <div class="chat-input-inner">
       <!-- Text input -->
@@ -380,90 +392,216 @@ body::after {
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="send-btn" onclick="sendTextMessage()">→</button>
       </div>
-
+ 
       <!-- Voice input -->
       <div id="voice-input" class="voice-controls">
-        <div class="voice-status" id="voice-status">Trykk for å snakke</div>
-        <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎙</button>
+        <div class="voice-status" id="voice-status">Trykk for å starte samtalen</div>
+        <button class="mic-btn" id="mic-btn" onclick="toggleConversation()">🎙</button>
       </div>
     </div>
   </div>
 </div>
-
+ 
 <script>
 const API_CHAT = '/api/chat';
 const API_TTS = '/api/tts';
 const API_STT = '/api/stt';
-
+ 
 let profile = {};
 let conversationHistory = [];
 let messageCount = 0;
 const MAX_EXCHANGES = 28;
 let isLoading = false;
 let mode = 'voice';
-
-// Recording state
-// ─── VAD-basert kontinuerlig samtale ───
+ 
+// VAD-state for kontinuerlig samtale
 let myvad = null;
-let isListening = false;
 let isMinnaSpeaking = false;
-let currentAudio = null;
 let conversationActive = false;
-
+let currentAudio = null;
+ 
+function toggleKw(el) { el.classList.toggle('on'); }
+function getKeywords() {
+  return Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
+}
+ 
+function setMode(el, m) {
+  document.querySelectorAll('.mode-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  mode = m;
+}
+ 
+// ═══════════════════════════════════════════════════════════
+// SYSTEM-PROMPT FOR MINNA – DYP SAMTALE
+// ═══════════════════════════════════════════════════════════
+ 
+function buildSystemPrompt() {
+  const { name, age, place, keywords, extra } = profile;
+  return `Du er Minna – en varm, klok norsk samtalepartner som hjelper ${name} (${age}${place ? `, fra ${place}` : ''}) fortelle livshistorien sin. Familien skal lese dette en dag, så historiene må bli RIKE og DETALJERTE.
+ 
+${keywords.length > 0 ? `Bakgrunn vi vet om: ${keywords.join(', ')}.` : ''}
+${extra ? `Viktig kontekst: ${extra}` : ''}
+ 
+═══════════════════════════════════
+DIN VIKTIGSTE OPPGAVE: GÅ DYPT, IKKE BREDT
+═══════════════════════════════════
+ 
+En god minnebok handler om FÅ MINNER FORTALT GODT, ikke mange minner fortalt overflatisk.
+Når ${name} nevner noe konkret – et sted, en person, en hendelse, en følelse – STOPP og GRAV.
+Du har omtrent 25-28 utvekslinger totalt. Bruk dem på 4-5 dype historier, ikke 10 grunne svar.
+ 
+═══════════════════════════════════
+GRAVE-TEKNIKKEN (SE ETTER GULL)
+═══════════════════════════════════
+ 
+Etter HVERT svar fra ${name}, spør deg selv:
+"Hva er det rikeste i det hun nettopp sa? Hvilken setning vil jeg vite mer om?"
+ 
+Når du finner det – grav der. Bruk en av disse teknikkene:
+ 
+1. SANSER: "Husker du lukten av...?" / "Hva hørte du?" / "Hvordan så det ut?"
+2. KONKRET SCENE: "Kan du fortelle om én bestemt gang det skjedde?" / "Husker du en spesiell dag?"
+3. FØLELSE: "Hva tenkte du da?" / "Hvordan kjentes det?"
+4. PERSON: "Fortell mer om henne." / "Hva var det første du la merke til ved ham?"
+5. DETALJ: "Hva hadde du på deg?" / "Hvor satt dere?" / "Hvem andre var der?"
+6. BETYDNING: "Hvorfor husker du nettopp det?" / "Hva betyr den dagen for deg nå?"
+ 
+═══════════════════════════════════
+SAMTALENS BUE (ikke rigid liste)
+═══════════════════════════════════
+ 
+Begynn alltid med ÉN konkret, sanselig scene fra barndommen – ikke generelle spørsmål.
+GOD ÅPNING: "Hvis du lukker øynene og tenker tilbake til da du var liten – hva er det første bildet som dukker opp?"
+DÅRLIG ÅPNING: "Fortell om barndommen din."
+ 
+Beveg deg gjennom livet naturlig, men la ${name} styre. Områder å innom (i denne rekkefølgen om mulig):
+• Barndom – ett konkret minne, ikke oversikt
+• Foreldre/familie – én scene med mor eller far
+• Ungdom – en venn, en drøm, en første gang
+• Kjærlighet – hvordan møttes de, eller noe spesifikt
+• Arbeid/voksenliv – en hendelse, ikke karriereoversikt
+• Vanskelig tid – noe hun kom seg gjennom
+• Det hun er stoltest av
+• Hva hun vil at barnebarna skal vite
+ 
+═══════════════════════════════════
+SLIK SVARER DU
+═══════════════════════════════════
+ 
+LENGDE: Vanligvis 1-3 setninger. Lengre hvis du reflekterer tilbake noe vakkert hun sa.
+ 
+STRUKTUR PÅ DINE SVAR:
+1. KORT ANERKJENNELSE av det hun nettopp sa (referer til et konkret ord eller bilde)
+2. ETT spørsmål som graver dypere
+ 
+EKSEMPLER PÅ GODE SVAR:
+✓ "Tenk det, å vokse opp ved sjøen i Lofoten. Jeg ser for meg båtene. Husker du lukten av havet om morgenen – var det noe du la merke til?"
+✓ "Du nevner faren din så varmt. Var det noe spesielt han pleide å si til deg?"
+✓ "En storm midt på natta – så skummelt. Hvor gammel var du da?"
+ 
+DÅRLIGE SVAR (UNNGÅ):
+✗ "Så fint. La oss snakke om skolen din nå."  ← hopper for fort
+✗ "Hva mer husker du fra barndommen?"  ← for vagt
+✗ "Hadde du søsken? Hvilken skole gikk du på? Hva het læreren din?"  ← flere spørsmål
+✗ "Det var en vanskelig tid for mange."  ← generelt, ikke personlig
+ 
+═══════════════════════════════════
+TONE
+═══════════════════════════════════
+ 
+• Snakk varmt norsk, som en klok venninne, ikke en intervjuer
+• Bruk ${name}s navn av og til, ikke i hver melding
+• Gjenta nøkkelord hun bruker ("storm", "kjøkkenet", "Sigurd") – det viser at du lytter
+• Vær stille hvis hun trenger det – si "Ta deg god tid"
+• Ved korte svar: ikke press, men foreslå en konkret vinkel: "Var det noe spesielt med kjøkkenet hun hadde?"
+• Ved triste minner: anerkjenn følelsen først ("Det høres tungt ut"), så grav forsiktig
+• Aldri to spørsmål i samme melding
+ 
+═══════════════════════════════════
+DYBDE-SIGNAL
+═══════════════════════════════════
+ 
+Når du har samlet rike detaljer om EN scene (sted, mennesker, følelse, sanser, betydning) – DA kan du gå videre.
+Si det varmt: "Det er et vakkert minne, ${name}. Kan jeg spørre deg om noe annet nå?"
+ 
+═══════════════════════════════════
+AVSLUTNING
+═══════════════════════════════════
+ 
+Etter omtrent 25-28 utvekslinger, avslutt med:
+1. En takk som refererer til EN spesifikk historie hun fortalte
+2. Et spørsmål om hva hun vil at barnebarna skal huske
+3. [SAMTALE_FERDIG] som siste markør
+ 
+HUSKEREGEL: Hvert spørsmål du stiller skal bygge på noe ${name} nettopp sa. Hvis du ikke kan referere tilbake til ordene hennes, har du sluttet å lytte.`;
+}
+ 
+async function callChat(system, messages) {
+  const response = await fetch(API_CHAT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, messages })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'API feil');
+  return data.text;
+}
+ 
+// ═══════════════════════════════════════════════════════════
+// VAD – KONTINUERLIG SAMTALE UTEN KNAPPETRYKK
+// ═══════════════════════════════════════════════════════════
+ 
 async function initVAD() {
-  if (myvad) return;
-  
+  if (myvad) return true;
+ 
   try {
     myvad = await vad.MicVAD.new({
       onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
       baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
-      
-      // Litt mer tålmodighet for eldre stemmer
+ 
+      // Tilpasset for eldre stemmer – lengre pauser tillates
       positiveSpeechThreshold: 0.5,
       negativeSpeechThreshold: 0.35,
-      redemptionFrames: 24,      // ~1.5 sek stillhet før vi anser det som ferdig
-      minSpeechFrames: 4,         // ignorerer veldig korte lyder (hosting, host)
-      
+      redemptionFrames: 24,   // ~1.5 sek stillhet før vi anser det som ferdig
+      minSpeechFrames: 4,     // ignorerer veldig korte lyder (host, smell)
+ 
       onSpeechStart: () => {
-        if (isMinnaSpeaking) return; // ikke avbryt Minna
-        console.log('Bestemor begynner å snakke');
-        setStatus('Lytter...', 'recording');
+        if (isMinnaSpeaking) return;
         document.getElementById('mic-btn').classList.add('recording');
+        document.getElementById('mic-btn').classList.remove('listening');
+        setStatus('Lytter...', 'recording');
       },
-      
+ 
       onSpeechEnd: async (audio) => {
         if (isMinnaSpeaking || !conversationActive) return;
-        console.log('Bestemor er ferdig, sender til STT');
         document.getElementById('mic-btn').classList.remove('recording');
         setStatus('Skriver ned hva du sa...', 'processing');
-        
-        // Konverter Float32Array til WAV-blob
+ 
         const wavBlob = float32ArrayToWav(audio, 16000);
         await processVoiceInput(wavBlob);
       },
-      
+ 
       onVADMisfire: () => {
-        console.log('For kort lyd – ignorerer');
         document.getElementById('mic-btn').classList.remove('recording');
         if (conversationActive && !isMinnaSpeaking) {
-          setStatus('Snakk når du er klar...', '');
+          document.getElementById('mic-btn').classList.add('listening');
+          setStatus('Snakk når du er klar...', 'listening');
         }
       }
     });
     return true;
   } catch(e) {
     console.error('VAD init feil:', e);
-    setStatus('Kunne ikke starte mikrofon');
+    setStatus('Kunne ikke starte mikrofon. Sjekk innstillingene.');
     return false;
   }
 }
-
-// Konverterer Float32Array (16kHz) til WAV-blob for sending til STT
+ 
+// Konverterer Float32Array (16kHz) til WAV-blob for STT
 function float32ArrayToWav(samples, sampleRate) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
-  
-  // WAV-header
+ 
   const writeString = (offset, str) => {
     for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
@@ -480,18 +618,17 @@ function float32ArrayToWav(samples, sampleRate) {
   view.setUint16(34, 16, true);
   writeString(36, 'data');
   view.setUint32(40, samples.length * 2, true);
-  
-  // PCM-data
+ 
   let offset = 44;
   for (let i = 0; i < samples.length; i++) {
     const s = Math.max(-1, Math.min(1, samples[i]));
     view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     offset += 2;
   }
-  
+ 
   return new Blob([buffer], { type: 'audio/wav' });
 }
-
+ 
 async function processVoiceInput(audioBlob) {
   try {
     const response = await fetch(API_STT, {
@@ -501,208 +638,122 @@ async function processVoiceInput(audioBlob) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'STT feilet');
-    
+ 
     const text = data.text?.trim();
     if (text && text.length > 1) {
       await processUserMessage(text);
     } else {
-      setStatus('Snakk når du er klar...');
+      if (conversationActive) {
+        document.getElementById('mic-btn').classList.add('listening');
+        setStatus('Snakk når du er klar...', 'listening');
+      }
     }
   } catch(e) {
     console.error('STT error:', e);
-    setStatus('Snakk når du er klar...');
+    if (conversationActive) {
+      document.getElementById('mic-btn').classList.add('listening');
+      setStatus('Snakk når du er klar...', 'listening');
+    }
   }
 }
-
-// Erstatt gamle toggleRecording - nå brukes den bare til å starte/stoppe hele samtalen
-async function toggleRecording() {
+ 
+async function toggleConversation() {
   if (conversationActive) {
-    // Brukeren vil pause
-    stopConversation();
+    pauseConversation();
   } else {
-    await startConversation();
+    await resumeConversation();
   }
 }
-
-async function startConversation() {
+ 
+async function resumeConversation() {
   const ok = await initVAD();
   if (!ok) return;
-  
+ 
   conversationActive = true;
   myvad.start();
   document.getElementById('mic-btn').textContent = '⏸';
-  setStatus('Snakk når du er klar...');
+  document.getElementById('mic-btn').classList.add('listening');
+  setStatus('Snakk når du er klar...', 'listening');
 }
-
-function stopConversation() {
+ 
+function pauseConversation() {
   conversationActive = false;
   if (myvad) myvad.pause();
   if (currentAudio) currentAudio.pause();
   isMinnaSpeaking = false;
-  document.getElementById('mic-btn').classList.remove('recording');
-  document.getElementById('mic-btn').textContent = '🎙';
-  setStatus('Samtalen er pauset – trykk for å fortsette');
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('recording');
+  btn.classList.remove('listening');
+  btn.textContent = '🎙';
+  setStatus('Pauset – trykk for å fortsette');
 }
-
-function toggleKw(el) { el.classList.toggle('on'); }
-function getKeywords() {
-  return Array.from(document.querySelectorAll('.kw.on')).map(k => k.textContent);
-}
-
-function setMode(el, m) {
-  document.querySelectorAll('.mode-opt').forEach(o => o.classList.remove('active'));
-  el.classList.add('active');
-  mode = m;
-}
-
-function buildSystemPrompt() {
-  const { name, age, place, keywords, extra } = profile;
-  return `Du er Minna – en varm, klok norsk samtalepartner som hjelper ${name} (${age}${place ? `, fra ${place}` : ''}) fortelle livshistorien sin. Familien skal lese dette en dag, så historiene må bli RIKE og DETALJERTE.
-
-${keywords.length > 0 ? `Bakgrunn vi vet om: ${keywords.join(', ')}.` : ''}
-${extra ? `Viktig kontekst: ${extra}` : ''}
-
-═══════════════════════════════════
-DIN VIKTIGSTE OPPGAVE: GÅ DYPT, IKKE BREDT
-═══════════════════════════════════
-
-En god minnebok handler om FÅ MINNER FORTALT GODT, ikke mange minner fortalt overflatisk.
-Når ${name} nevner noe konkret – et sted, en person, en hendelse, en følelse – STOPP og GRAV.
-Du har 25-30 utvekslinger totalt. Bruk dem på 4-5 dype historier, ikke 10 grunne svar.
-
-═══════════════════════════════════
-GRAVE-TEKNIKKEN (SE ETTER GULL)
-═══════════════════════════════════
-
-Etter HVERT svar fra ${name}, spør deg selv:
-"Hva er det rikeste i det hun nettopp sa? Hvilken setning vil jeg vite mer om?"
-
-Når du finner det – grav der. Bruk en av disse teknikkene:
-
-1. SANSER: "Husker du lukten av...?" / "Hva hørte du?" / "Hvordan så det ut?"
-2. KONKRET SCENE: "Kan du fortelle om én bestemt gang det skjedde?" / "Husker du en spesiell dag?"
-3. FØLELSE: "Hva tenkte du da?" / "Hvordan kjentes det?"
-4. PERSON: "Fortell mer om henne." / "Hva var det første du la merke til ved ham?"
-5. DETALJ: "Hva hadde du på deg?" / "Hvor satt dere?" / "Hvem andre var der?"
-6. BETYDNING: "Hvorfor husker du nettopp det?" / "Hva betyr den dagen for deg nå?"
-
-═══════════════════════════════════
-SAMTALENS BUE (ikke rigid liste)
-═══════════════════════════════════
-
-Begynn alltid med ÉN konkret, sanselig scene fra barndommen – ikke generelle spørsmål.
-GOD ÅPNING: "Hvis du lukker øynene og tenker tilbake til da du var liten – hva er det første bildet som dukker opp?"
-DÅRLIG ÅPNING: "Fortell om barndommen din."
-
-Beveg deg gjennom livet naturlig, men la ${name} styre. Områder å innom (i denne rekkefølgen om mulig):
-- Barndom – ett konkret minne, ikke oversikt
-- Foreldre/familie – én scene med mor eller far
-- Ungdom – en venn, en drøm, en første gang
-- Kjærlighet – hvordan møttes de, eller noe spesifikt
-- Arbeid/voksenliv – en hendelse, ikke karriereoversikt
-- Vanskelig tid – noe hun kom seg gjennom
-- Det hun er stoltest av
-- Hva hun vil at barnebarna skal vite
-
-═══════════════════════════════════
-SLIK SVARER DU
-═══════════════════════════════════
-
-LENGDE: Vanligvis 1-3 setninger. Lengre hvis du reflekterer tilbake noe vakkert hun sa.
-
-STRUKTUR PÅ DINE SVAR:
-1. KORT ANERKJENNELSE av det hun nettopp sa (referer til et konkret ord eller bilde)
-2. ETT spørsmål som graver dypere
-
-EKSEMPLER PÅ GODE SVAR:
-✓ "Tenk det, å vokse opp ved sjøen i Lofoten. Jeg ser for meg båtene. Husker du lukten av havet om morgenen – var det noe du la merke til?"
-✓ "Du nevner faren din så varmt. Var det noe spesielt han pleide å si til deg?"
-✓ "En storm midt på natta – så skummelt. Hvor gammel var du da?"
-
-DÅRLIGE SVAR (UNNGÅ):
-✗ "Så fint. La oss snakke om skolen din nå."  ← hopper for fort
-✗ "Hva mer husker du fra barndommen?"  ← for vagt
-✗ "Hadde du søsken? Hvilken skole gikk du på? Hva het læreren din?"  ← flere spørsmål
-✗ "Det var en vanskelig tid for mange."  ← generelt, ikke personlig
-
-═══════════════════════════════════
-TONE
-═══════════════════════════════════
-
-- Snakk varmt norsk, som en klok venninne, ikke en intervjuer
-- Bruk ${name}s navn av og til, ikke i hver melding
-- Gjenta nøkkelord hun bruker ("storm", "kjøkkenet", "Sigurd") – det viser at du lytter
-- Vær stille hvis hun trenger det – si "Ta deg god tid"
-- Ved korte svar: ikke press, men foreslå en konkret vinkel: "Var det noe spesielt med kjøkkenet hun hadde?"
-- Ved triste minner: anerkjenn følelsen først ("Det høres tungt ut"), så grav forsiktig
-- Aldri to spørsmål i samme melding
-
-═══════════════════════════════════
-DYBDE-SIGNAL
-═══════════════════════════════════
-
-Når du har samlet rike detaljer om EN scene (sted, mennesker, følelse, sanser, betydning) – DA kan du gå videre.
-Si det varmt: "Det er et vakkert minne, ${name}. Kan jeg spørre deg om noe annet nå?"
-
-═══════════════════════════════════
-AVSLUTNING
-═══════════════════════════════════
-
-Etter 25-30 utvekslinger, avslutt med:
-1. En takk som refererer til EN spesifikk historie hun fortalte
-2. Et spørsmål om hva hun vil at barnebarna skal huske
-3. [SAMTALE_FERDIG] som siste markør
-
-HUSKEREGEL: Hvert spørsmål du stiller skal bygge på noe ${name} nettopp sa. Hvis du ikke kan referere tilbake til ordene hennes, har du sluttet å lytte.`;
-}
-async function callChat(system, messages) {
-  const response = await fetch(API_CHAT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, messages })
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'API feil');
-  return data.text;
-}
-
+ 
+// ═══════════════════════════════════════════════════════════
+// TTS – MINNA SNAKKER
+// ═══════════════════════════════════════════════════════════
+ 
 async function playTTS(text) {
   try {
+    isMinnaSpeaking = true;
+    if (myvad && conversationActive) myvad.pause(); // unngå at Minna hører seg selv
+ 
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('mic-btn').classList.remove('recording');
     document.getElementById('minna-avatar').classList.add('speaking');
     setStatus('Minna snakker...');
-
+ 
     const response = await fetch(API_TTS, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
-
+ 
     if (!response.ok) throw new Error('TTS feilet');
-
+ 
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-
+ 
     if (currentAudio) currentAudio.pause();
     currentAudio = new Audio(url);
-
+ 
     return new Promise((resolve) => {
       currentAudio.onended = () => {
         document.getElementById('minna-avatar').classList.remove('speaking');
         URL.revokeObjectURL(url);
-        resolve();
+        isMinnaSpeaking = false;
+        // Vent litt før vi lytter igjen – gir bestemor tid til å tenke
+        setTimeout(() => {
+          if (conversationActive && myvad) {
+            myvad.start();
+            document.getElementById('mic-btn').classList.add('listening');
+            setStatus('Snakk når du er klar...', 'listening');
+          }
+          resolve();
+        }, 700);
       };
       currentAudio.onerror = () => {
         document.getElementById('minna-avatar').classList.remove('speaking');
+        isMinnaSpeaking = false;
+        if (conversationActive && myvad) {
+          myvad.start();
+          document.getElementById('mic-btn').classList.add('listening');
+        }
         resolve();
       };
       currentAudio.play();
     });
   } catch(e) {
+    isMinnaSpeaking = false;
     document.getElementById('minna-avatar').classList.remove('speaking');
+    if (conversationActive && myvad) myvad.start();
     console.error('TTS error:', e);
   }
 }
-
+ 
+// ═══════════════════════════════════════════════════════════
+// SAMTALEFLYT
+// ═══════════════════════════════════════════════════════════
+ 
 async function startChat() {
   const name = document.getElementById('s-name').value.trim() || 'deg';
   const age = document.getElementById('s-age').value;
@@ -710,83 +761,96 @@ async function startChat() {
   const extra = document.getElementById('s-extra').value.trim();
   const keywords = getKeywords();
   profile = { name, age, place, keywords, extra };
-
+ 
   const btn = document.getElementById('start-btn');
   btn.disabled = true;
   btn.textContent = 'Starter...';
-
+ 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('chat-screen').style.display = 'flex';
-
+ 
   if (mode === 'voice') {
     document.getElementById('voice-input').style.display = 'flex';
     document.getElementById('text-input').style.display = 'none';
+    // Forhåndslast VAD så bestemor slipper å vente senere
+    await initVAD();
+    conversationActive = true;
+    document.getElementById('mic-btn').textContent = '⏸';
   } else {
     document.getElementById('voice-input').style.display = 'none';
     document.getElementById('text-input').style.display = 'flex';
   }
-
+ 
   updateProgress();
   showTyping();
-
+ 
   try {
     const system = buildSystemPrompt();
-   const reply = await callChat(system, [{ role:'user', content:`Start samtalen. Hils kort og varmt på ${name} (én setning). Forklar at dere skal snakke i ro, og at det ikke finnes feil svar. Avslutt med ett sanselig åpningsspørsmål: be henne lukke øynene og fortelle om det første bildet som dukker opp fra barndommen.` }]);
+    const reply = await callChat(system, [{
+      role: 'user',
+      content: `Start samtalen. Hils kort og varmt på ${name} (én setning). Forklar at dere skal snakke i ro, og at det ikke finnes feil svar. Avslutt med ett sanselig åpningsspørsmål: be henne lukke øynene og fortelle om det første bildet som dukker opp fra barndommen.`
+    }]);
     conversationHistory.push({ role:'assistant', content: reply });
     hideTyping();
     addMessage('minna', reply);
     messageCount++;
     updateProgress();
-
+ 
     if (mode === 'voice') {
       await playTTS(reply);
-      setStatus('Trykk for å snakke');
+      // VAD startes automatisk når TTS er ferdig
     }
   } catch(e) {
     hideTyping();
     addMessage('minna', 'Beklager, det oppsto en feil. Prøv å laste siden på nytt.');
+    console.error(e);
   }
 }
-
+ 
 async function processUserMessage(text) {
   if (!text || isLoading) return;
-
+ 
   addMessage('user', text);
   conversationHistory.push({ role:'user', content: text });
   messageCount++;
   updateProgress();
-
+ 
   if (messageCount >= MAX_EXCHANGES * 2) { showDone(); return; }
-
+ 
   isLoading = true;
   setStatus('Minna tenker...');
   showTyping();
-
+ 
   try {
     const reply = await callChat(buildSystemPrompt(), conversationHistory);
     conversationHistory.push({ role:'assistant', content: reply });
     hideTyping();
-
+ 
     const isDone = reply.includes('[SAMTALE_FERDIG]');
     const cleanReply = reply.replace('[SAMTALE_FERDIG]', '').trim();
     addMessage('minna', cleanReply);
     messageCount++;
     updateProgress();
-
+ 
     if (mode === 'voice') {
       await playTTS(cleanReply);
     }
-
-    if (isDone) setTimeout(showDone, 800);
+ 
+    if (isDone) {
+      conversationActive = false;
+      if (myvad) myvad.pause();
+      setTimeout(showDone, 800);
+    }
   } catch(e) {
     hideTyping();
     addMessage('minna', 'Beklager, jeg fikk ikke svar akkurat nå. Prøv igjen.');
+    console.error(e);
   }
-
+ 
   isLoading = false;
-  setStatus(mode === 'voice' ? 'Trykk for å snakke' : 'Lytter...');
+  if (mode === 'text') setStatus('Lytter...');
 }
-
+ 
 function sendTextMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
@@ -795,71 +859,7 @@ function sendTextMessage() {
   autoResize(input);
   processUserMessage(text);
 }
-
-async function toggleRecording() {
-  if (isRecording) {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
-}
-
-async function startRecording() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioChunks = [];
-    mediaRecorder = new MediaRecorder(stream);
-
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.onstop = handleRecordingStop;
-    mediaRecorder.start();
-
-    isRecording = true;
-    document.getElementById('mic-btn').classList.add('recording');
-    document.getElementById('mic-btn').textContent = '⏹';
-    setStatus('Snakk nå... trykk når du er ferdig', 'recording');
-  } catch(e) {
-    setStatus('Kunne ikke få tilgang til mikrofon');
-  }
-}
-
-function stopRecording() {
-  if (mediaRecorder && isRecording) {
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(t => t.stop());
-    isRecording = false;
-    document.getElementById('mic-btn').classList.remove('recording');
-    document.getElementById('mic-btn').textContent = '🎙';
-    document.getElementById('mic-btn').disabled = true;
-    setStatus('Skriver ned hva du sa...', 'processing');
-  }
-}
-
-async function handleRecordingStop() {
-  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-  try {
-    const response = await fetch(API_STT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'audio/webm' },
-      body: audioBlob
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'STT feilet');
-
-    document.getElementById('mic-btn').disabled = false;
-    const text = data.text?.trim();
-    if (text) {
-      await processUserMessage(text);
-    } else {
-      setStatus('Hørte ikke noe. Prøv igjen.');
-    }
-  } catch(e) {
-    document.getElementById('mic-btn').disabled = false;
-    setStatus('Feil ved opptak. Prøv igjen.');
-    console.error('STT error:', e);
-  }
-}
-
+ 
 function setStatus(text, type = '') {
   document.getElementById('status-text').textContent = text;
   const voiceStatus = document.getElementById('voice-status');
@@ -868,45 +868,53 @@ function setStatus(text, type = '') {
     voiceStatus.className = 'voice-status ' + type;
   }
 }
-
+ 
 function addMessage(role, text) {
   const container = document.getElementById('chat-messages');
   const typing = document.getElementById('typing');
-
+ 
   const msg = document.createElement('div');
   msg.className = `msg ${role}`;
   const avatarChar = role === 'minna' ? '✦' : (profile.name?.[0]?.toUpperCase() || '?');
   const avatarStyle = role === 'minna'
     ? 'background:linear-gradient(135deg,#C8933A,#E0B060);box-shadow:0 3px 12px rgba(200,147,58,0.25);'
     : '';
-
+ 
   const replayBtn = role === 'minna' && mode === 'voice'
     ? `<button class="replay-btn" onclick="replayMessage(this, \`${text.replace(/`/g,'\\`').replace(/'/g,"\\'")}\`)">▶ Hør igjen</button>`
     : '';
-
+ 
   msg.innerHTML = `
     <div class="msg-avatar" style="${avatarStyle}">${avatarChar}</div>
     <div class="msg-bubble">
       <div class="msg-text">${escapeHtml(text)}</div>
       ${replayBtn}
     </div>`;
-
+ 
   container.insertBefore(msg, typing);
   scrollToBottom();
 }
-
+ 
 async function replayMessage(btn, text) {
   btn.disabled = true;
+  // Pause VAD mens vi spiller av replay
+  const wasActive = conversationActive;
+  if (myvad) myvad.pause();
   await playTTS(text);
   btn.disabled = false;
 }
-
+ 
 function showTyping() { document.getElementById('typing').classList.add('visible'); scrollToBottom(); }
 function hideTyping() { document.getElementById('typing').classList.remove('visible'); }
-
+ 
 function showDone() {
+  conversationActive = false;
+  if (myvad) myvad.pause();
   if (mode === 'voice') {
-    document.getElementById('mic-btn').disabled = true;
+    const btn = document.getElementById('mic-btn');
+    btn.disabled = true;
+    btn.classList.remove('recording');
+    btn.classList.remove('listening');
   } else {
     document.getElementById('chat-input').disabled = true;
     document.getElementById('send-btn').disabled = true;
@@ -917,35 +925,37 @@ function showDone() {
   document.getElementById('chat-messages').appendChild(banner);
   scrollToBottom();
 }
-
+ 
 function updateProgress() {
   const pct = Math.min(100, Math.round((messageCount / (MAX_EXCHANGES * 2)) * 100));
   document.getElementById('header-progress').textContent = `${pct}% fullført`;
 }
-
+ 
 function scrollToBottom() { setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50); }
-
+ 
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
 }
-
+ 
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 140) + 'px';
 }
-
+ 
 function escapeHtml(text) {
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
-
-// ─── Erstatt den gamle exportChat-funksjonen i index.html med denne ───
-
+ 
+// ═══════════════════════════════════════════════════════════
+// PDF-EKSPORT
+// ═══════════════════════════════════════════════════════════
+ 
 async function exportChat() {
   const btn = document.querySelector('.export-btn');
   const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '⏳ Lager minneboken...';
-
+ 
   try {
     const response = await fetch('/api/pdf', {
       method: 'POST',
@@ -957,25 +967,25 @@ async function exportChat() {
         tier: 'digital'
       })
     });
-
+ 
     if (!response.ok) throw new Error('PDF-generering feilet');
-
+ 
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const date = new Date().toLocaleDateString('no-NO');
-
+ 
     const a = document.createElement('a');
     a.href = url;
     a.download = `minnio-${(profile.name||'minnebok').toLowerCase()}-${date.replace(/\./g,'-')}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-
+ 
     btn.innerHTML = '✓ Lastet ned!';
     setTimeout(() => {
       btn.innerHTML = originalText;
       btn.disabled = false;
     }, 2000);
-
+ 
   } catch (err) {
     btn.innerHTML = '✗ Noe gikk galt - prøv igjen';
     btn.disabled = false;
@@ -986,3 +996,5 @@ async function exportChat() {
 </script>
 </body>
 </html>
+ 
+
