@@ -366,10 +366,18 @@ async function enterChat() {
   // Initialiser VAD
   await initVAD();
 
+  // KRITISK: Aktiver samtalen NÅ. Brukeren klikket "Jeg er klar",
+  // det ER samtykket. Uten dette settes conversationActive aldri,
+  // og Minna går aldri over til å lytte etter at hun har snakket.
+  conversationActive = true;
+
   if (isFirstTime) {
     await startNewConversation();
   } else {
-    setStatus('Trykk mikrofonen for å fortsette', 'listening');
+    // Gjenopptatt samtale: start lytting direkte
+    if (myvad) myvad.start();
+    document.getElementById('mic-btn').classList.add('listening');
+    setStatus('Snakk når du er klar...', 'listening');
   }
 }
 
