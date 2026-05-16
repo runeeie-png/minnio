@@ -50,6 +50,7 @@ export default async function handler(req, res) {
       tier: tier || 'digital',
       conversation: [],
       messageCount: 0,
+      photos: [],
       status: 'created',
       createdAt: now,
       updatedAt: now

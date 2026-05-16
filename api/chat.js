@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, digHint } = req.body || {};
+    const { system, messages, digHint, photo } = req.body || {};
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Mangler messages' });
@@ -57,6 +57,34 @@ export default async function handler(req, res) {
 
     if (safeMessages.length === 0) {
       return res.status(400).json({ error: 'Ingen gyldige meldinger' });
+    }
+
+    // BILDE: Hvis et bilde er sendt med, legg det i SISTE user-melding.
+    // Dette gjør at Minna "ser" bildet kun denne ene gangen – det
+    // gjentas ikke i historikken (klienten erstatter bildet med en
+    // kort tekstnotat i sin lagrede historikk). Sparer kostnad og tid.
+    if (photo && photo.data && photo.mediaType) {
+      // Finn siste user-melding
+      for (let i = safeMessages.length - 1; i >= 0; i--) {
+        if (safeMessages[i].role === 'user') {
+          const originalText = safeMessages[i].content;
+          safeMessages[i] = {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: photo.mediaType,
+                  data: photo.data
+                }
+              },
+              { type: 'text', text: originalText }
+            ]
+          };
+          break;
+        }
+      }
     }
 
     // Velg modell – Sonnet 4.6 er billigere og fungerer like bra for samtaler
