@@ -541,25 +541,46 @@ async function startNewConversation() {
 async function initVAD() {
   if (myvad) return true;
   try {
+    // Be eksplisitt om mikrofontilgang FØRST, så vi får en tydelig
+    // feil hvis tillatelse mangler (særlig viktig på mobil/iOS).
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Vi trenger ikke streamen selv – VAD åpner sin egen.
+      // Lukk denne testen for å unngå dobbel mikrofonbruk.
+      stream.getTracks().forEach(t => t.stop());
+    } catch (micErr) {
+      console.error('Mikrofontilgang nektet:', micErr.name, micErr.message);
+      setStatus('Mikrofonen er ikke tillatt. Sjekk innstillinger og last siden på nytt.');
+      return false;
+    }
+
     myvad = await vad.MicVAD.new({
+      // KRITISK: disse to stiene MÅ være satt, ellers prøver VAD å
+      // laste modellfilene fra minnio.app/ (som ikke finnes) og
+      // detekterer aldri tale. Last fra samme CDN som <script>-taggene.
+      baseAssetPath: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/',
+      onnxWASMBasePath: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/',
       positiveSpeechThreshold: 0.5,
       negativeSpeechThreshold: 0.35,
       redemptionFrames: 24,
       minSpeechFrames: 4,
       onSpeechStart: () => {
         if (isMinnaSpeaking) return;
+        console.log('VAD: tale oppdaget');
         document.getElementById('mic-btn').classList.add('recording');
         document.getElementById('mic-btn').classList.remove('listening');
         setStatus('Lytter...', 'recording');
       },
       onSpeechEnd: async (audio) => {
         if (isMinnaSpeaking || !conversationActive) return;
+        console.log('VAD: tale ferdig, behandler...');
         document.getElementById('mic-btn').classList.remove('recording');
         setStatus('Skriver ned hva du sa...', 'processing');
         const wavBlob = float32ArrayToWav(audio, 16000);
         await processVoiceInput(wavBlob);
       },
       onVADMisfire: () => {
+        console.log('VAD: feilutløsning (for kort lyd)');
         document.getElementById('mic-btn').classList.remove('recording');
         if (conversationActive && !isMinnaSpeaking) {
           document.getElementById('mic-btn').classList.add('listening');
@@ -567,10 +588,11 @@ async function initVAD() {
         }
       }
     });
+    console.log('VAD initialisert OK');
     return true;
   } catch (e) {
     console.error('VAD init feil:', e);
-    setStatus('Kunne ikke starte mikrofon');
+    setStatus('Kunne ikke starte mikrofon. Last siden på nytt.');
     return false;
   }
 }
