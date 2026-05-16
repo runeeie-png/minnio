@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minnio – Bok-barometer</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0F0A06; --surface: #1A1008; --surface2: #231508;
+  --gold: #C8933A; --gold2: #E0B060;
+  --text: #F0E8DC; --text2: #A8896E;
+  --sage: #6B8F68; --rust: #B5654A;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:var(--bg); color:var(--text); min-height:100vh;
+  font-family:'DM Sans',sans-serif; padding:24px;
+}
+.wrap { max-width:1100px; margin:0 auto; }
+h1 { font-family:'Lora',serif; color:var(--gold2); font-size:1.8rem; margin-bottom:4px; }
+.sub { color:var(--text2); margin-bottom:24px; }
+.login {
+  max-width:360px; margin:80px auto; background:var(--surface);
+  padding:32px; border-radius:12px; border:1px solid rgba(200,147,58,0.2);
+}
+.login input {
+  width:100%; background:var(--bg); border:1px solid rgba(200,147,58,0.3);
+  color:var(--text); padding:12px; border-radius:8px; font-size:1rem; margin:12px 0;
+}
+.login button, .refresh-btn {
+  background:var(--gold); color:var(--bg); border:none;
+  padding:12px 20px; border-radius:8px; font-size:1rem;
+  cursor:pointer; font-weight:500;
+}
+.refresh-btn { margin-bottom:20px; }
+.session-card {
+  background:var(--surface); border:1px solid rgba(200,147,58,0.15);
+  border-radius:12px; padding:20px; margin-bottom:16px;
+}
+.session-head {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  flex-wrap:wrap; gap:12px; margin-bottom:16px;
+}
+.session-name { font-family:'Lora',serif; font-size:1.3rem; color:var(--gold2); }
+.session-meta { font-size:0.85rem; color:var(--text2); margin-top:4px; }
+.verdict {
+  display:inline-block; padding:6px 14px; border-radius:20px;
+  font-size:0.85rem; font-weight:500;
+}
+.verdict.klar { background:rgba(107,143,104,0.2); color:var(--sage); border:1px solid var(--sage); }
+.verdict.snart { background:rgba(224,176,96,0.15); color:var(--gold2); border:1px solid var(--gold); }
+.verdict.halvveis { background:rgba(181,101,74,0.15); color:var(--rust); border:1px solid var(--rust); }
+.verdict.tidlig { background:rgba(168,137,110,0.15); color:var(--text2); border:1px solid var(--text2); }
+.stats-row {
+  display:flex; gap:24px; flex-wrap:wrap; margin-bottom:18px;
+  font-size:0.9rem; color:var(--text2);
+}
+.stats-row strong { color:var(--gold2); font-size:1.1rem; }
+.chapters { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:10px; }
+.chapter {
+  background:var(--bg); border-radius:8px; padding:12px 14px;
+}
+.chapter-title { font-size:0.9rem; margin-bottom:8px; display:flex; justify-content:space-between; }
+.chapter-pct { color:var(--text2); }
+.bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+.bar-fill.rik { background:var(--sage); }
+.bar-fill.god { background:var(--gold); }
+.bar-fill.pabegynt { background:var(--rust); }
+.bar-fill.tom { background:var(--surface2); }
+.empty { text-align:center; color:var(--text2); padding:60px 20px; }
+.error-msg { color:var(--rust); margin-top:12px; font-size:0.9rem; }
+.link {
+  font-family:monospace; font-size:0.8rem; color:var(--gold);
+  word-break:break-all; margin-top:8px;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login" class="login">
+    <h1>Bok-barometer</h1>
+    <p class="sub">Logg inn for å se samtaler</p>
+    <input type="password" id="admin-key" placeholder="Admin-nøkkel" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Logg inn</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <h1>Bok-barometer</h1>
+    <p class="sub" id="count-label">Laster...</p>
+    <button class="refresh-btn" onclick="loadSessions()">↻ Oppdater</button>
+    <div id="sessions"></div>
+  </div>
+
+</div>
+
+<script>
+let adminKey = '';
+
+function doLogin() {
+  adminKey = document.getElementById('admin-key').value.trim();
+  if (!adminKey) return;
+  loadSessions();
+}
+
+async function loadSessions() {
+  const errBox = document.getElementById('login-error');
+  errBox.textContent = '';
+  try {
+    const res = await fetch(`/api/sessions-overview?key=${encodeURIComponent(adminKey)}`);
+    if (res.status === 401) {
+      errBox.textContent = 'Feil admin-nøkkel';
+      return;
+    }
+    if (!res.ok) {
+      errBox.textContent = 'Noe gikk galt. Prøv igjen.';
+      return;
+    }
+    const data = await res.json();
+
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('count-label').textContent =
+      `${data.count} samtale${data.count === 1 ? '' : 'r'} totalt`;
+
+    renderSessions(data.sessions);
+  } catch (e) {
+    errBox.textContent = 'Kunne ikke koble til: ' + e.message;
+  }
+}
+
+function verdictClass(verdict) {
+  if (verdict.includes('klar til å produseres')) return 'klar';
+  if (verdict.includes('Snart klar')) return 'snart';
+  if (verdict.includes('Halvveis')) return 'halvveis';
+  return 'tidlig';
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function renderSessions(sessions) {
+  const container = document.getElementById('sessions');
+  if (!sessions.length) {
+    container.innerHTML = '<div class="empty">Ingen samtaler ennå. Opprett en på /admin.html</div>';
+    return;
+  }
+
+  container.innerHTML = sessions.map(s => {
+    const b = s.book;
+    const vClass = verdictClass(b.verdict);
+    const chaptersHtml = b.chapterStatus.map(ch => {
+      let fillClass = 'tom';
+      if (ch.richness >= 70) fillClass = 'rik';
+      else if (ch.ready) fillClass = 'god';
+      else if (ch.richness > 0) fillClass = 'pabegynt';
+      return `
+        <div class="chapter">
+          <div class="chapter-title">
+            <span>${escapeHtml(ch.title)}</span>
+            <span class="chapter-pct">${ch.richness}%</span>
+          </div>
+          <div class="bar"><div class="bar-fill ${fillClass}" style="width:${ch.richness}%"></div></div>
+        </div>`;
+    }).join('');
+
+    const updated = s.updatedAt ? new Date(s.updatedAt).toLocaleString('no-NO') : '–';
+
+    return `
+      <div class="session-card">
+        <div class="session-head">
+          <div>
+            <div class="session-name">${escapeHtml(s.name)}</div>
+            <div class="session-meta">
+              ${s.buyer ? 'Kjøper: ' + escapeHtml(s.buyer) + ' · ' : ''}
+              ${s.messageCount} meldinger · Status: ${escapeHtml(s.status)} · Sist aktiv: ${updated}
+            </div>
+            <div class="link">minnio.app/s/${escapeHtml(s.id)}</div>
+          </div>
+          <div class="verdict ${vClass}">${escapeHtml(b.verdict)}</div>
+        </div>
+        <div class="stats-row">
+          <div><strong>${b.goodChapters}</strong>/${b.totalChapters} kapitler klare</div>
+          <div><strong>~${b.estimatedPages}</strong> sider estimert</div>
+          <div><strong>${b.avgRichness}%</strong> gjennomsnittlig dybde</div>
+        </div>
+        <div class="chapters">${chaptersHtml}</div>
+        <div style="margin-top:16px;">
+          <button class="refresh-btn" style="margin:0;" onclick="generateBook('${escapeHtml(s.id)}', '${escapeHtml(s.name)}')">📖 Lag bokutkast</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function generateBook(sessionId, name) {
+  if (!confirm(`Lage bokutkast for ${name}? Dette tar 1-2 minutter.`)) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,10,6,0.95);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;';
+  overlay.innerHTML = `
+    <div style="text-align:center;color:var(--gold2);font-family:'Lora',serif;font-size:1.4rem;margin-bottom:16px;">Skriver boka til ${escapeHtml(name)}...</div>
+    <div style="color:var(--text2);">Dette tar 1-2 minutter. Minna-redaktøren jobber.</div>
+    <div id="book-result" style="max-width:700px;width:100%;margin-top:24px;"></div>`;
+  document.body.appendChild(overlay);
+
+  try {
+    const res = await fetch(`/api/compose-book?key=${encodeURIComponent(adminKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('book-result').innerHTML =
+        `<div style="color:var(--rust);text-align:center;">Feil: ${escapeHtml(data.error || 'ukjent')}</div>
+         <div style="text-align:center;margin-top:20px;"><button class="refresh-btn" onclick="this.closest('div[style*=fixed]').remove()">Lukk</button></div>`;
+      return;
+    }
+
+    const chapters = data.bookDraft.chapters.filter(c => !c.skipped && c.text);
+    let html = `<div style="background:var(--surface);border-radius:12px;padding:32px;max-height:70vh;overflow-y:auto;">`;
+    html += `<h2 style="font-family:'Lora',serif;color:var(--gold2);text-align:center;margin-bottom:24px;">${escapeHtml(data.name)} – Mitt liv</h2>`;
+    for (const ch of chapters) {
+      html += `<h3 style="font-family:'Lora',serif;color:var(--gold);margin:24px 0 12px;">${escapeHtml(ch.title)}</h3>`;
+      html += `<div style="line-height:1.8;color:var(--text);white-space:pre-wrap;">${escapeHtml(ch.text)}</div>`;
+    }
+    html += `</div>`;
+    html += `<div style="text-align:center;margin-top:20px;">
+      <button class="refresh-btn" onclick="this.closest('div[style*=fixed]').remove()">Lukk</button>
+    </div>`;
+    document.getElementById('book-result').innerHTML = html;
+
+  } catch (e) {
+    document.getElementById('book-result').innerHTML =
+      `<div style="color:var(--rust);text-align:center;">Kunne ikke lage bok: ${escapeHtml(e.message)}</div>
+       <div style="text-align:center;margin-top:20px;"><button class="refresh-btn" onclick="this.closest('div[style*=fixed]').remove()">Lukk</button></div>`;
+  }
+}
+</script>
+</body>
+</html>

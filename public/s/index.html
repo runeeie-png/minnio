@@ -190,6 +190,8 @@ body {
 const API_CHAT = '/api/chat';
 const API_TTS = '/api/tts';
 const API_STT = '/api/stt';
+const API_ANALYZE = '/api/analyze';
+const API_CLEAN = '/api/clean-transcript';
 
 // Hent session-ID fra URL: /s/abc123xyz
 const SESSION_ID = window.location.pathname.split('/').filter(Boolean).pop();
@@ -207,6 +209,10 @@ let messageCount = 0;
 let sessionStatus = 'created';
 let isLoading = false;
 let isFirstTime = true;
+
+// Bok-tilstand (bygges av bakgrunns-agenten)
+let bookState = null;
+let pendingDigHint = null;  // hint fra bakgrunns-agenten til neste Minna-spørsmål
 
 // VAD-state
 let myvad = null;
@@ -245,6 +251,7 @@ async function loadSession() {
     conversationHistory = session.conversation || [];
     messageCount = session.messageCount || 0;
     sessionStatus = session.status || 'created';
+    bookState = session.bookState || null;
     isFirstTime = conversationHistory.length === 0;
 
     renderWelcome();
@@ -419,11 +426,47 @@ async function callChat(system, messages) {
   const response = await fetch(API_CHAT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, messages })
+    body: JSON.stringify({ system, messages, digHint: pendingDigHint })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'API feil');
+  // Bruk hintet kun én gang
+  pendingDigHint = null;
   return data.text;
+}
+
+// Bakgrunns-agent: analyser siste svar, oppdater bok-tilstand.
+// Kjøres "fire and forget" – skal ALDRI blokkere eller bryte samtalen.
+async function runBackgroundAnalysis(lastUserMessage) {
+  try {
+    // Bygg kort transkript av de siste 6 meldingene
+    const recent = conversationHistory.slice(-6)
+      .map(m => `${m.role === 'assistant' ? 'Minna' : 'Forteller'}: ${m.content}`)
+      .join('\n');
+
+    const response = await fetch(API_ANALYZE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lastUserMessage,
+        recentTranscript: recent,
+        bookState
+      })
+    });
+    const data = await response.json();
+    if (data.bookState) {
+      bookState = data.bookState;
+      // Lagre oppdatert bok-tilstand
+      saveSession({ bookState });
+    }
+    if (data.dig_hint) {
+      pendingDigHint = data.dig_hint;
+      console.log('Bakgrunns-hint til neste spørsmål:', data.dig_hint);
+    }
+  } catch (e) {
+    // Stille feil – analysen er et tillegg, ikke kritisk
+    console.warn('Bakgrunnsanalyse feilet (uskadelig):', e.message);
+  }
 }
 
 async function saveSession(extra = {}) {
@@ -534,6 +577,33 @@ function pauseConversation() {
 // AUDIO PROSESSERING
 // ═══════════════════════════════════════════════════════════
 
+// NIVÅ 1: Rydd opp rå transkripsjon før Minna hører den.
+// Feilsikker – returnerer ALLTID brukbar tekst (original ved feil).
+async function cleanTranscript(rawText) {
+  try {
+    const recent = conversationHistory.slice(-4)
+      .map(m => `${m.role === 'assistant' ? 'Minna' : 'Forteller'}: ${m.content}`)
+      .join('\n');
+
+    const response = await fetch(API_CLEAN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawText, recentContext: recent })
+    });
+    const data = await response.json();
+    if (data.cleaned && data.cleaned.trim().length > 0) {
+      if (data.changed) {
+        console.log('Transkripsjon ryddet:', rawText, '→', data.cleaned);
+      }
+      return data.cleaned;
+    }
+    return rawText;
+  } catch (e) {
+    console.warn('Transkripsjonsrydding feilet (bruker original):', e.message);
+    return rawText;
+  }
+}
+
 async function processVoiceInput(audioBlob) {
   try {
     const response = await fetch(API_STT, {
@@ -544,8 +614,11 @@ async function processVoiceInput(audioBlob) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'STT feilet');
 
-    const text = data.text?.trim();
+    let text = data.text?.trim();
     if (text && text.length > 1) {
+      // NIVÅ 1: Rydd opp transkripsjonen før Minna hører den.
+      // Feilsikkert – ved problemer brukes originalteksten.
+      text = await cleanTranscript(text);
       await processUserMessage(text);
     } else {
       if (conversationActive) {
@@ -584,7 +657,19 @@ async function processUserMessage(text) {
   setStatus('Minna tenker...');
   showTyping();
 
+  // Start bakgrunnsanalysen NÅ – den kjører parallelt mens vi
+  // forbereder Minnas svar. Vi venter på den (kort) så dig_hint
+  // rekker å påvirke neste spørsmål.
+  const analysisPromise = runBackgroundAnalysis(text);
+
   try {
+    // Vent på bakgrunnsanalysen (maks ~3 sek) før vi spør Minna,
+    // slik at et eventuelt gravingshint kommer med.
+    await Promise.race([
+      analysisPromise,
+      new Promise(resolve => setTimeout(resolve, 3500))
+    ]);
+
     const reply = await callChat(buildSystemPrompt(), conversationHistory);
     conversationHistory.push({ role: 'assistant', content: reply });
     hideTyping();

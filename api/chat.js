@@ -13,10 +13,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages } = req.body || {};
+    const { system, messages, digHint } = req.body || {};
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Mangler messages' });
+    }
+
+    // Hvis bakgrunns-agenten har sendt et gravingshint, legg det til
+    // i system-prompten som en diskret instruksjon til Minna.
+    let finalSystem = system || 'Du er Minna, en varm norsk samtalepartner.';
+    if (digHint && typeof digHint === 'string' && digHint.trim()) {
+      finalSystem += `\n\n─────────────────────\nINTERN STYRING (vises ikke til fortelleren):\nBoka mangler fortsatt noe på dette området. Et godt neste spørsmål kan være rundt: "${digHint.trim()}". Bruk dette som inspirasjon, men formuler det med dine egne ord, naturlig og varmt. Hvis fortelleren akkurat har åpnet et nytt og rikt spor, kan du følge det i stedet.`;
     }
 
     // Saner meldinger – kritisk for Anthropic API
@@ -59,7 +66,7 @@ export default async function handler(req, res) {
     const requestBody = {
       model: modelToUse,
       max_tokens: 512,
-      system: system || 'Du er Minna, en varm norsk samtalepartner.',
+      system: finalSystem,
       messages: safeMessages,
     };
 

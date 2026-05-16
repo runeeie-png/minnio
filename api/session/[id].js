@@ -36,6 +36,7 @@ export default async function handler(req, res) {
       if (updates.conversation) session.conversation = updates.conversation;
       if (updates.messageCount !== undefined) session.messageCount = updates.messageCount;
       if (updates.status) session.status = updates.status;
+      if (updates.bookState) session.bookState = updates.bookState;
       session.updatedAt = new Date().toISOString();
 
       const ttl = session.status === 'completed' ? 60 * 60 * 24 * 365 : 60 * 60 * 24 * 90;
