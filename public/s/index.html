@@ -295,7 +295,43 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Lyd-opplåsing – kritisk for at TTS skal virke.
+// Nettlesere blokkerer lyd som ikke starter rett etter et klikk.
+// Vi spiller en kort, lydløs tone idet brukeren klikker "Jeg er klar",
+// som låser opp lyd-kanalen for resten av samtalen.
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  try {
+    // Lag en kort stille lyd og spill den
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0; // helt lydløs
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(0);
+      oscillator.stop(ctx.currentTime + 0.01);
+      if (ctx.state === 'suspended') ctx.resume();
+    }
+    // Spill også en tom Audio for å låse opp <audio>-elementer
+    const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+    silentAudio.volume = 0;
+    silentAudio.play().catch(() => {});
+    audioUnlocked = true;
+    console.log('Lyd låst opp');
+  } catch (e) {
+    console.warn('Kunne ikke låse opp lyd:', e.message);
+  }
+}
+
 async function enterChat() {
+  // Lås opp lyd FØRST – mens vi fortsatt er i brukerens klikk-kontekst
+  unlockAudio();
+
   document.getElementById('welcome-screen').style.display = 'none';
   document.getElementById('chat-screen').classList.add('active');
 
@@ -682,9 +718,25 @@ async function playTTS(text) {
         if (myToken === ttsToken) {
           isMinnaSpeaking = false;
           document.getElementById('minna-avatar').classList.remove('speaking');
-          if (conversationActive && myvad) {
-            myvad.start();
-            document.getElementById('mic-btn').classList.add('listening');
+
+          // Lyd ble blokkert av nettleser. Vis en stor knapp brukeren kan trykke.
+          if (err.name === 'NotAllowedError') {
+            setStatus('Trykk på den gule knappen for å høre Minna', 'listening');
+            const micBtn = document.getElementById('mic-btn');
+            micBtn.textContent = '🔊';
+            micBtn.classList.add('listening');
+            micBtn.onclick = () => {
+              micBtn.textContent = '🎙';
+              micBtn.onclick = toggleMic;
+              audio.play().then(() => {
+                isMinnaSpeaking = true;
+              }).catch(e => console.warn('Andre forsøk feilet:', e.message));
+            };
+          } else {
+            if (conversationActive && myvad) {
+              myvad.start();
+              document.getElementById('mic-btn').classList.add('listening');
+            }
           }
         }
         resolve();
