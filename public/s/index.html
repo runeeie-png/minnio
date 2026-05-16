@@ -307,29 +307,45 @@ function escapeHtml(text) {
 // Vi spiller en kort, lydløs tone idet brukeren klikker "Jeg er klar",
 // som låser opp lyd-kanalen for resten av samtalen.
 let audioUnlocked = false;
+let sharedAudio = null;          // ETT gjenbrukbart audio-element
+let sharedAudioContext = null;   // delt AudioContext
 
 function unlockAudio() {
   if (audioUnlocked) return;
   try {
-    // Lag en kort stille lyd og spill den
+    // 1. Opprett en delt AudioContext (gjenbrukes hele økten)
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) {
-      const ctx = new AudioContextClass();
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      gain.gain.value = 0; // helt lydløs
+      sharedAudioContext = new AudioContextClass();
+      const oscillator = sharedAudioContext.createOscillator();
+      const gain = sharedAudioContext.createGain();
+      gain.gain.value = 0;
       oscillator.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(sharedAudioContext.destination);
       oscillator.start(0);
-      oscillator.stop(ctx.currentTime + 0.01);
-      if (ctx.state === 'suspended') ctx.resume();
+      oscillator.stop(sharedAudioContext.currentTime + 0.01);
+      if (sharedAudioContext.state === 'suspended') sharedAudioContext.resume();
     }
-    // Spill også en tom Audio for å låse opp <audio>-elementer
-    const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-    silentAudio.volume = 0;
-    silentAudio.play().catch(() => {});
+
+    // 2. Opprett ETT gjenbrukbart <audio>-element og lås det opp NÅ
+    //    mens vi er i brukerens klikk-kontekst. Dette samme elementet
+    //    brukes for ALL TTS senere – da slipper vi autoplay-blokkering.
+    sharedAudio = new Audio();
+    sharedAudio.autoplay = false;
+    // Spill et kort lydløst klipp for å "varme opp" elementet
+    sharedAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    sharedAudio.volume = 0;
+    const p = sharedAudio.play();
+    if (p && p.then) {
+      p.then(() => {
+        sharedAudio.pause();
+        sharedAudio.currentTime = 0;
+        sharedAudio.volume = 1;
+      }).catch(e => console.warn('Opplåsing av delt audio:', e.message));
+    }
+
     audioUnlocked = true;
-    console.log('Lyd låst opp');
+    console.log('Lyd låst opp (delt element)');
   } catch (e) {
     console.warn('Kunne ikke låse opp lyd:', e.message);
   }
@@ -719,8 +735,12 @@ function stopCurrentAudio() {
       currentAudio.onerror = null;
       currentAudio.pause();
       currentAudio.currentTime = 0;
-      currentAudio.src = '';
-      currentAudio.load();
+      // Hvis dette er det DELTE elementet: ikke ødelegg det,
+      // bare stopp avspilling. Det skal gjenbrukes.
+      if (currentAudio !== sharedAudio) {
+        currentAudio.src = '';
+        currentAudio.load();
+      }
     } catch (e) {
       console.warn('stopCurrentAudio:', e.message);
     }
@@ -763,7 +783,12 @@ async function playTTS(text) {
     }
 
     stopCurrentAudio();
-    const audio = new Audio(url);
+    // Bruk det DELTE audio-elementet som ble låst opp ved første klikk.
+    // Dette omgår autoplay-blokkering på mobil. Fallback til nytt
+    // element bare hvis opplåsing aldri skjedde.
+    const audio = sharedAudio || new Audio();
+    audio.src = url;
+    audio.volume = 1;
     currentAudio = audio;
 
     return new Promise((resolve) => {
@@ -810,21 +835,52 @@ async function playTTS(text) {
             const micBtn = document.getElementById('mic-btn');
             micBtn.textContent = '🔊';
             micBtn.classList.add('listening');
-            micBtn.onclick = () => {
+
+            // Felles funksjon for å avslutte Minnas tale og starte lytting
+            const finishSpeaking = () => {
+              document.getElementById('minna-avatar').classList.remove('speaking');
+              try { URL.revokeObjectURL(url); } catch (e) {}
+              if (currentAudio === audio) currentAudio = null;
+              isMinnaSpeaking = false;
               micBtn.textContent = '🎙';
               micBtn.onclick = toggleMic;
-              audio.play().then(() => {
-                isMinnaSpeaking = true;
-              }).catch(e => console.warn('Andre forsøk feilet:', e.message));
+              // Start lytting hvis samtalen er aktiv
+              setTimeout(() => {
+                if (conversationActive && myvad && !isMinnaSpeaking) {
+                  myvad.start();
+                  micBtn.classList.add('listening');
+                  setStatus('Snakk når du er klar...', 'listening');
+                }
+                resolve();
+              }, 600);
+            };
+
+            micBtn.onclick = () => {
+              micBtn.textContent = '⏸';
+              micBtn.onclick = null; // hindre dobbelttrykk under avspilling
+              isMinnaSpeaking = true;
+              document.getElementById('minna-avatar').classList.add('speaking');
+              setStatus('Minna snakker...');
+
+              // KRITISK: sett onended FØR vi spiller, så lytting starter etterpå
+              audio.onended = finishSpeaking;
+              audio.onerror = finishSpeaking;
+
+              audio.play().catch(e => {
+                console.warn('Andre avspillingsforsøk feilet:', e.message);
+                finishSpeaking();
+              });
             };
           } else {
             if (conversationActive && myvad) {
               myvad.start();
               document.getElementById('mic-btn').classList.add('listening');
             }
+            resolve();
           }
+        } else {
+          resolve();
         }
-        resolve();
       });
     });
   } catch (e) {
