@@ -419,6 +419,10 @@ let isFirstTime = true;
 let bookState = null;
 let pendingDigHint = null;  // hint fra bakgrunns-agenten til neste Minna-spørsmål
 
+// Bilder lagt til av giveren
+let photos = [];            // alle bilder fra session
+let pendingPhoto = null;    // bilde som skal sendes til Minna ved neste melding
+
 // VAD-state
 let myvad = null;
 let isMinnaSpeaking = false;
@@ -457,6 +461,7 @@ async function loadSession() {
     messageCount = session.messageCount || 0;
     sessionStatus = session.status || 'created';
     bookState = session.bookState || null;
+    photos = Array.isArray(session.photos) ? session.photos : [];
     isFirstTime = conversationHistory.length === 0;
 
     renderWelcome();
@@ -652,15 +657,35 @@ Etter ca. 25-28 utvekslinger, takk ${name} for ${P.poss} historier og avslutt me
 // ═══════════════════════════════════════════════════════════
 
 async function callChat(system, messages) {
+  // Hvis et bilde skal vises til Minna nå, send det med.
+  // KRITISK kostnadsgrep: bildet sendes KUN denne forespørselen.
+  // I conversationHistory erstatter vi bildet med en kort tekstnotat
+  // så de tunge base64-bytene ikke gjentas hver tur resten av samtalen.
+  const photoToSend = pendingPhoto;
+
   const response = await fetch(API_CHAT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, messages, digHint: pendingDigHint })
+    body: JSON.stringify({
+      system,
+      messages,
+      digHint: pendingDigHint,
+      photo: photoToSend ? { data: photoToSend.data, mediaType: photoToSend.mediaType } : null
+    })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'API feil');
+
   // Bruk hintet kun én gang
   pendingDigHint = null;
+
+  // Bildet er nå "sett" av Minna. Marker det som vist og tøm pending.
+  if (photoToSend) {
+    const p = photos.find(x => x.id === photoToSend.id);
+    if (p) p.shown = true;
+    pendingPhoto = null;
+  }
+
   return data.text;
 }
 
@@ -732,6 +757,22 @@ async function startNewConversation() {
     updateProgress();
     await saveSession({ status: 'in_progress' });
     await playTTS(reply);
+
+    // Hvis giveren markerte et bilde som "vis først" – vis det nå,
+    // rett etter åpningen, og la Minna spørre om det.
+    const firstPhoto = selectPhotoToShow();
+    if (firstPhoto) {
+      preparePhotoForMinna(firstPhoto);
+      showTyping();
+      const photoReply = await callChat(buildSystemPrompt(), conversationHistory);
+      conversationHistory.push({ role: 'assistant', content: photoReply });
+      messageCount++;
+      hideTyping();
+      addMessage('minna', photoReply, true);
+      updateProgress();
+      await saveSession();
+      await playTTS(photoReply);
+    }
   } catch (e) {
     hideTyping();
     addMessage('minna', 'Beklager, det oppsto en feil. Prøv å laste siden på nytt.', false);
@@ -920,6 +961,12 @@ async function processUserMessage(text) {
       analysisPromise,
       new Promise(resolve => setTimeout(resolve, 3500))
     ]);
+
+    // Er det tid for å vise et nytt bilde? Spres utover samtalen.
+    const photoNow = selectPhotoToShow();
+    if (photoNow) {
+      preparePhotoForMinna(photoNow);
+    }
 
     const reply = await callChat(buildSystemPrompt(), conversationHistory);
     conversationHistory.push({ role: 'assistant', content: reply });
@@ -1146,6 +1193,60 @@ function addMessage(role, text, withReplay) {
   }
   document.getElementById('messages').appendChild(msg);
   scrollToBottom();
+}
+
+// Vis et bilde stort i samtalestrømmen, så fortelleren ser det
+// mens Minna spør om det.
+function showPhotoInChat(photo) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg minna';
+  wrap.style.cssText = 'max-width:90%; text-align:center;';
+  const img = document.createElement('img');
+  img.src = `data:${photo.mediaType};base64,${photo.data}`;
+  img.style.cssText = 'max-width:100%; border-radius:10px; border:2px solid var(--gold); margin-bottom:6px;';
+  img.alt = 'Familiebilde';
+  wrap.appendChild(img);
+  document.getElementById('messages').appendChild(wrap);
+  scrollToBottom();
+}
+
+// Velg neste bilde som skal vises. Kalles før Minnas tur.
+// Logikk: "vis først"-bildet aller først. Deretter spres resten
+// jevnt utover samtalen (omtrent hvert 6. utvekslingsledd).
+function selectPhotoToShow() {
+  if (!photos || photos.length === 0) return null;
+
+  const unshown = photos.filter(p => !p.shown);
+  if (unshown.length === 0) return null;
+
+  // 1) "Vis først"-bildet har prioritet helt i starten
+  if (isFirstTime || messageCount <= 1) {
+    const first = unshown.find(p => p.showFirst);
+    if (first) return first;
+  }
+
+  // 2) Spre resten utover – omtrent hvert 6. fortellersvar,
+  //    men ikke før samtalen har kommet litt i gang
+  if (messageCount >= 4 && messageCount % 6 === 0) {
+    // Foretrekk bilder som IKKE er markert "vis først"
+    const next = unshown.find(p => !p.showFirst) || unshown[0];
+    return next;
+  }
+
+  return null;
+}
+
+// Forbered bilde til Minna: vis det på skjermen, sett pendingPhoto,
+// og legg en kort tekstnotat i historikken (ikke base64 – sparer kostnad).
+function preparePhotoForMinna(photo) {
+  showPhotoInChat(photo);
+  pendingPhoto = photo;
+  // Tekstnotat i historikken slik at Minna i senere meldinger vet
+  // at bildet ble vist, uten å sende de tunge bildebytene på nytt.
+  conversationHistory.push({
+    role: 'user',
+    content: `[Fortelleren ble nå vist et gammelt bilde. Familiens beskrivelse: "${photo.description}". Se på bildet, kommenter det varmt og still ETT naturlig spørsmål om det.]`
+  });
 }
 
 async function replayMessage(btn, text) {
