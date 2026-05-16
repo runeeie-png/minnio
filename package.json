@@ -1,11 +1,10 @@
 {
   "name": "minnio",
   "version": "1.0.0",
-  "description": "AI-drevet minnebok-tjeneste på norsk",
+  "type": "module",
   "private": true,
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
-    "@upstash/redis": "^1.34.0",
-    "pdfkit": "^0.15.0"
+    "@upstash/redis": "^1.34.0"
   }
 }

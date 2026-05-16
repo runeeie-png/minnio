@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minnio – Din samtale</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
+<style>
+:root {
+  --bg: #0F0A06; --surface: #1A1008; --surface2: #231508;
+  --gold: #C8933A; --gold2: #E0B060;
+  --text: #F0E8DC; --text2: #A8896E;
+  --sage: #6B8F68; --user-bg: #2D1C0C;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:var(--bg); color:var(--text); min-height:100vh;
+  font-family:'DM Sans',sans-serif;
+  display:flex; flex-direction:column;
+}
+
+/* Welcome */
+.welcome-screen {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  padding:32px 20px;
+}
+.welcome-card {
+  max-width:500px; width:100%;
+  background:var(--surface); border:1px solid rgba(200,147,58,0.2);
+  border-radius:12px; padding:32px; text-align:center;
+}
+.welcome-greeting {
+  font-family:'Lora',serif; font-size:1.8rem; color:var(--gold2); margin-bottom:8px;
+}
+.welcome-from { color:var(--text2); margin-bottom:20px; }
+.welcome-explain p { line-height:1.6; color:var(--text); margin-bottom:14px; text-align:left; }
+.welcome-btn {
+  background:var(--gold); color:var(--bg); border:none;
+  padding:16px 32px; border-radius:8px; font-size:1.05rem; font-weight:500;
+  cursor:pointer; margin-top:24px; width:100%;
+}
+.welcome-btn:hover { background:var(--gold2); }
+
+/* Chat */
+.chat-screen { display:none; flex-direction:column; height:100vh; }
+.chat-screen.active { display:flex; }
+
+.chat-header {
+  background:var(--surface2); padding:16px 20px;
+  border-bottom:1px solid rgba(200,147,58,0.15);
+  display:flex; align-items:center; gap:12px;
+}
+.minna-avatar {
+  width:44px; height:44px; border-radius:50%;
+  background:linear-gradient(135deg, var(--gold), var(--gold2));
+  display:flex; align-items:center; justify-content:center;
+  color:var(--bg); font-weight:600; font-family:'Lora',serif;
+  font-size:1.2rem; transition:0.3s;
+}
+.minna-avatar.speaking {
+  box-shadow: 0 0 0 4px rgba(200,147,58,0.3);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(200,147,58,0.3); }
+  50% { box-shadow: 0 0 0 10px rgba(200,147,58,0.1); }
+}
+.chat-title { font-family:'Lora',serif; color:var(--gold2); }
+.chat-subtitle { font-size:0.85rem; color:var(--text2); }
+
+.messages {
+  flex:1; overflow-y:auto; padding:20px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.msg {
+  max-width:85%; padding:12px 16px; border-radius:12px;
+  line-height:1.5; word-wrap:break-word;
+}
+.msg.minna {
+  background:var(--surface); align-self:flex-start;
+  border-bottom-left-radius:4px; color:var(--text);
+}
+.msg.user {
+  background:var(--user-bg); align-self:flex-end;
+  border-bottom-right-radius:4px; color:var(--text);
+}
+.replay-btn {
+  background:transparent; color:var(--gold); border:1px solid rgba(200,147,58,0.3);
+  padding:4px 10px; border-radius:12px; font-size:0.8rem;
+  cursor:pointer; margin-top:8px;
+}
+
+.typing { display:none; padding:14px 16px; }
+.typing.visible { display:flex; gap:4px; }
+.typing span {
+  width:8px; height:8px; background:var(--gold); border-radius:50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+.typing span:nth-child(2) { animation-delay: 0.16s; }
+.typing span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes bounce { 0%, 80%, 100% { transform:scale(0); } 40% { transform:scale(1); } }
+
+.controls {
+  padding:20px; border-top:1px solid rgba(200,147,58,0.15);
+  background:var(--surface2);
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+}
+.status {
+  font-size:0.9rem; color:var(--text2); min-height:20px; text-align:center;
+}
+.status.listening { color:var(--sage); }
+.status.recording { color:var(--gold); }
+.status.processing { color:var(--gold2); }
+
+.mic-btn {
+  width:80px; height:80px; border-radius:50%; border:none;
+  background:var(--gold); color:var(--bg); font-size:2rem;
+  cursor:pointer; transition:0.2s; display:flex; align-items:center; justify-content:center;
+}
+.mic-btn.listening { background:var(--sage); animation: glow 2s ease-in-out infinite; }
+.mic-btn.recording { background:#c85050; animation: glow 0.8s ease-in-out infinite; }
+@keyframes glow {
+  0%, 100% { box-shadow:0 0 0 0 currentColor; opacity:1; }
+  50% { box-shadow:0 0 0 12px rgba(0,0,0,0); opacity:0.85; }
+}
+
+.pause-btn {
+  background:transparent; color:var(--text2); border:1px solid rgba(200,147,58,0.3);
+  padding:8px 16px; border-radius:6px; font-size:0.85rem; cursor:pointer;
+}
+
+/* Error */
+.error-screen {
+  flex:1; display:none; align-items:center; justify-content:center; padding:32px 20px;
+}
+.error-screen.active { display:flex; }
+.error-card {
+  max-width:500px; background:rgba(200,80,80,0.1);
+  border:1px solid #c85050; padding:24px; border-radius:12px;
+  text-align:center;
+}
+.error-card p { color:#ffc8c8; line-height:1.6; }
+
+.logo {
+  font-family:'Lora',serif; font-size:1.4rem; color:var(--gold2);
+  text-align:center; padding:20px;
+}
+</style>
+</head>
+<body>
+
+<div class="welcome-screen" id="welcome-screen">
+  <div class="welcome-card" id="welcome-card">
+    <div style="color:var(--text2);">Laster samtalen din...</div>
+  </div>
+</div>
+
+<div class="error-screen" id="error-screen">
+  <div class="error-card">
+    <div class="logo">Minnio</div>
+    <p id="error-msg"></p>
+  </div>
+</div>
+
+<div class="chat-screen" id="chat-screen">
+  <div class="chat-header">
+    <div class="minna-avatar" id="minna-avatar">M</div>
+    <div>
+      <div class="chat-title">Minna</div>
+      <div class="chat-subtitle" id="progress">Samtalen er i gang</div>
+    </div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+  <div class="typing" id="typing"><span></span><span></span><span></span></div>
+
+  <div class="controls">
+    <div class="status" id="status"></div>
+    <button class="mic-btn" id="mic-btn" onclick="toggleMic()">🎙</button>
+    <button class="pause-btn" onclick="pauseConversation()">Pause samtalen</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// KONFIG
+// ═══════════════════════════════════════════════════════════
+const API_CHAT = '/api/chat';
+const API_TTS = '/api/tts';
+const API_STT = '/api/stt';
+
+// Hent session-ID fra URL: /s/abc123xyz
+const SESSION_ID = window.location.pathname.split('/').filter(Boolean).pop();
+const API_SESSION = `/api/session/${SESSION_ID}`;
+
+console.log('Minnio path:', window.location.pathname, 'ID:', SESSION_ID);
+
+const MAX_EXCHANGES = 28;
+
+// State
+let profile = {};
+let buyer = null;
+let conversationHistory = [];
+let messageCount = 0;
+let sessionStatus = 'created';
+let isLoading = false;
+let isFirstTime = true;
+
+// VAD-state
+let myvad = null;
+let isMinnaSpeaking = false;
+let conversationActive = false;
+let currentAudio = null;
+let ttsToken = 0;
+
+// ═══════════════════════════════════════════════════════════
+// OPPSTART
+// ═══════════════════════════════════════════════════════════
+
+async function loadSession() {
+  // Sjekk URL
+  const invalidIds = ['index.html', 's', 'index', '', undefined, null];
+  if (!SESSION_ID || SESSION_ID.length < 6 || invalidIds.includes(SESSION_ID)) {
+    showError('Lenken er ikke riktig. Den må se ut som: minnio.app/s/abc12345 – be om å få lenken på nytt.');
+    return;
+  }
+
+  try {
+    const res = await fetch(API_SESSION);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 404) {
+        showError('Vi finner ikke samtalen din. Lenken kan ha utløpt. Be om en ny lenke.');
+      } else {
+        showError('Noe gikk galt med å laste samtalen. Prøv igjen om litt.');
+      }
+      return;
+    }
+
+    const session = await res.json();
+    profile = session.profile || {};
+    buyer = session.buyer || null;
+    conversationHistory = session.conversation || [];
+    messageCount = session.messageCount || 0;
+    sessionStatus = session.status || 'created';
+    isFirstTime = conversationHistory.length === 0;
+
+    renderWelcome();
+  } catch (e) {
+    console.error(e);
+    showError('Kunne ikke koble til. Sjekk at du har internett og prøv igjen.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('welcome-screen').style.display = 'none';
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('error-screen').classList.add('active');
+}
+
+function renderWelcome() {
+  const name = profile.name || 'kjære';
+  const buyerName = buyer?.name || 'familien din';
+  const card = document.getElementById('welcome-card');
+
+  if (isFirstTime) {
+    card.innerHTML = `
+      <div class="welcome-greeting">Hei ${escapeHtml(name)} ✦</div>
+      <div class="welcome-from">En hilsen fra ${escapeHtml(buyerName)}</div>
+      <div class="welcome-explain">
+        <p>${escapeHtml(buyerName)} har laget en gave til familien – en samtale med deg, om livet ditt og historiene dine. De skal bli til en bok som familien kan ta vare på.</p>
+        <p>Du skal snakke med Minna. Hun er en vennlig samtalepartner som lytter og spør deg om livet ditt. Det finnes ingen feil svar – du forteller bare det du vil dele.</p>
+        <p><strong style="color:var(--gold2);">Sett deg godt til rette, ta deg god tid.</strong> Du kan pause når du vil og fortsette en annen dag.</p>
+      </div>
+      <button class="welcome-btn" onclick="enterChat()">Jeg er klar – la oss begynne</button>
+    `;
+  } else {
+    card.innerHTML = `
+      <div class="welcome-greeting">Velkommen tilbake, ${escapeHtml(name)} ✦</div>
+      <div class="welcome-from">${messageCount} meldinger så langt</div>
+      <div class="welcome-explain">
+        <p>Klar til å fortsette der dere slapp?</p>
+      </div>
+      <button class="welcome-btn" onclick="enterChat()">Fortsett samtalen</button>
+    `;
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function enterChat() {
+  document.getElementById('welcome-screen').style.display = 'none';
+  document.getElementById('chat-screen').classList.add('active');
+
+  // Render eksisterende historikk
+  conversationHistory.forEach(m => {
+    addMessage(m.role === 'assistant' ? 'minna' : 'user', m.content, false);
+  });
+
+  // Initialiser VAD
+  await initVAD();
+
+  if (isFirstTime) {
+    await startNewConversation();
+  } else {
+    setStatus('Trykk mikrofonen for å fortsette', 'listening');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRONOMEN-HJELPER
+// ═══════════════════════════════════════════════════════════
+
+function getPronoun(gender, form) {
+  const isWoman = (gender || 'kvinne') === 'kvinne';
+  const map = {
+    subject:    { kvinne: 'hun',    mann: 'han' },
+    object:     { kvinne: 'henne',  mann: 'ham' },
+    possessive: { kvinne: 'hennes', mann: 'hans' }
+  };
+  return map[form]?.[isWoman ? 'kvinne' : 'mann'] || 'hun';
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYSTEM-PROMPT – enkel men kraftig
+// ═══════════════════════════════════════════════════════════
+
+function buildSystemPrompt() {
+  const { name, age, place, keywords, extra, gender } = profile;
+  const kw = (keywords || []).join(', ');
+  const P = {
+    sub: getPronoun(gender, 'subject'),
+    obj: getPronoun(gender, 'object'),
+    poss: getPronoun(gender, 'possessive')
+  };
+
+  return `Du er Minna – en varm norsk samtalepartner som hjelper ${name} fortelle livshistorien sin.
+
+OM ${name.toUpperCase()}: ${age ? age + '. ' : ''}${place ? 'Fra ' + place + '. ' : ''}${kw ? 'Bakgrunn: ' + kw + '. ' : ''}${extra || ''}
+
+MÅL: Få frem 4-5 konkrete, sanselige scener fra ${P.poss} liv – ikke en oversikt. Familien skal lese dette en dag.
+
+REGLER:
+1. Snakk varmt og naturlig norsk, som en venninne ved kjøkkenbordet
+2. Maks 1-2 setninger per melding
+3. Aldri gjenta ordene ${P.poss} ("Du sa at...", "Så du gikk på...")
+4. Aldri to spørsmål i samme melding
+5. Etter et rikt svar, grav i ÉN konkret detalj med sansene (lukt, lyd, syn)
+
+TYPISKE SPØRSMÅL:
+- "Hvor gammel var du da?"
+- "Hvem andre var med?"
+- "Hva tenkte du i det øyeblikket?"
+- "Husker du lukten?"
+- "Hva sa ${P.sub} til deg?"
+
+ÅPNINGEN: Aldri "Fortell om barndommen din". Si i stedet: "Hvis du lukker øynene og tenker tilbake til da du var liten – hva er det første bildet som dukker opp?"
+
+OMRÅDER Å INNOM (la samtalen flyte, ikke spør mekanisk):
+- Barndom (et konkret minne)
+- Foreldre (en scene)
+- Vendepunkt
+- Kjærlighet (hvordan møttes de)
+- Vanskelig tid
+- Høydepunkt
+- Visdom (hva ${P.sub} vil at barnebarna skal huske)
+
+Etter ca. 25-28 utvekslinger, takk ${name} for ${P.poss} historier og avslutt med "[SAMTALE_FERDIG]" som siste markør.`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHAT API
+// ═══════════════════════════════════════════════════════════
+
+async function callChat(system, messages) {
+  const response = await fetch(API_CHAT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, messages })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'API feil');
+  return data.text;
+}
+
+async function saveSession(extra = {}) {
+  const payload = {
+    conversation: conversationHistory,
+    messageCount,
+    status: sessionStatus,
+    ...extra
+  };
+  if (extra.status) sessionStatus = extra.status;
+  try {
+    await fetch(API_SESSION, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) { console.warn('Kunne ikke lagre:', e); }
+}
+
+async function startNewConversation() {
+  showTyping();
+  try {
+    const system = buildSystemPrompt();
+    const pronoun = getPronoun(profile.gender, 'object');
+    const reply = await callChat(system, [{
+      role: 'user',
+      content: `Start samtalen. Hils kort og varmt på ${profile.name} (én setning). Avslutt med ett sanselig åpningsspørsmål: be ${pronoun} lukke øynene og fortelle om det første bildet som dukker opp fra barndommen.`
+    }]);
+
+    conversationHistory.push({ role: 'assistant', content: reply });
+    messageCount++;
+    hideTyping();
+    addMessage('minna', reply, true);
+    updateProgress();
+    await saveSession({ status: 'in_progress' });
+    await playTTS(reply);
+  } catch (e) {
+    hideTyping();
+    addMessage('minna', 'Beklager, det oppsto en feil. Prøv å laste siden på nytt.', false);
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// VAD – kontinuerlig samtale
+// ═══════════════════════════════════════════════════════════
+
+async function initVAD() {
+  if (myvad) return true;
+  try {
+    myvad = await vad.MicVAD.new({
+      positiveSpeechThreshold: 0.5,
+      negativeSpeechThreshold: 0.35,
+      redemptionFrames: 24,
+      minSpeechFrames: 4,
+      onSpeechStart: () => {
+        if (isMinnaSpeaking) return;
+        document.getElementById('mic-btn').classList.add('recording');
+        document.getElementById('mic-btn').classList.remove('listening');
+        setStatus('Lytter...', 'recording');
+      },
+      onSpeechEnd: async (audio) => {
+        if (isMinnaSpeaking || !conversationActive) return;
+        document.getElementById('mic-btn').classList.remove('recording');
+        setStatus('Skriver ned hva du sa...', 'processing');
+        const wavBlob = float32ArrayToWav(audio, 16000);
+        await processVoiceInput(wavBlob);
+      },
+      onVADMisfire: () => {
+        document.getElementById('mic-btn').classList.remove('recording');
+        if (conversationActive && !isMinnaSpeaking) {
+          document.getElementById('mic-btn').classList.add('listening');
+          setStatus('Snakk når du er klar...', 'listening');
+        }
+      }
+    });
+    return true;
+  } catch (e) {
+    console.error('VAD init feil:', e);
+    setStatus('Kunne ikke starte mikrofon');
+    return false;
+  }
+}
+
+function toggleMic() {
+  if (!conversationActive) {
+    conversationActive = true;
+    if (myvad) myvad.start();
+    document.getElementById('mic-btn').classList.add('listening');
+    setStatus('Snakk når du er klar...', 'listening');
+  } else {
+    pauseConversation();
+  }
+}
+
+function pauseConversation() {
+  conversationActive = false;
+  if (myvad) myvad.pause();
+  stopCurrentAudio();
+  isMinnaSpeaking = false;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('recording');
+  btn.classList.remove('listening');
+  setStatus('Pauset – trykk for å fortsette');
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO PROSESSERING
+// ═══════════════════════════════════════════════════════════
+
+async function processVoiceInput(audioBlob) {
+  try {
+    const response = await fetch(API_STT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/wav' },
+      body: audioBlob
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'STT feilet');
+
+    const text = data.text?.trim();
+    if (text && text.length > 1) {
+      await processUserMessage(text);
+    } else {
+      if (conversationActive) {
+        document.getElementById('mic-btn').classList.add('listening');
+        setStatus('Snakk når du er klar...', 'listening');
+      }
+    }
+  } catch (e) {
+    console.error('STT error:', e);
+    if (conversationActive) {
+      document.getElementById('mic-btn').classList.add('listening');
+      setStatus('Snakk når du er klar...', 'listening');
+    }
+  }
+}
+
+async function processUserMessage(text) {
+  if (!text || isLoading) return;
+  if (isMinnaSpeaking) {
+    console.log('Ignorerer input – Minna snakker fortsatt');
+    return;
+  }
+
+  addMessage('user', text, true);
+  conversationHistory.push({ role: 'user', content: text });
+  messageCount++;
+  updateProgress();
+  await saveSession({ status: 'in_progress' });
+
+  if (messageCount >= MAX_EXCHANGES * 2) {
+    await completeSession();
+    return;
+  }
+
+  isLoading = true;
+  setStatus('Minna tenker...');
+  showTyping();
+
+  try {
+    const reply = await callChat(buildSystemPrompt(), conversationHistory);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    hideTyping();
+
+    const isDone = reply.includes('[SAMTALE_FERDIG]');
+    const cleanReply = reply.replace('[SAMTALE_FERDIG]', '').trim();
+    addMessage('minna', cleanReply, true);
+    messageCount++;
+    updateProgress();
+
+    conversationHistory[conversationHistory.length - 1].content = cleanReply;
+    await saveSession({});
+
+    isLoading = false;
+
+    if (isDone) {
+      await playTTS(cleanReply);
+      await completeSession();
+    } else {
+      await playTTS(cleanReply);
+    }
+  } catch (e) {
+    hideTyping();
+    isLoading = false;
+    addMessage('minna', 'Beklager, det oppsto en feil. Prøv å si det igjen.', false);
+    console.error(e);
+    if (conversationActive) {
+      document.getElementById('mic-btn').classList.add('listening');
+      setStatus('Snakk når du er klar...', 'listening');
+    }
+  }
+}
+
+async function completeSession() {
+  await saveSession({ status: 'completed' });
+  setStatus('Samtalen er ferdig. Tusen takk!');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TTS – robust mot race conditions
+// ═══════════════════════════════════════════════════════════
+
+function stopCurrentAudio() {
+  if (currentAudio) {
+    try {
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio.src = '';
+      currentAudio.load();
+    } catch (e) {
+      console.warn('stopCurrentAudio:', e.message);
+    }
+    currentAudio = null;
+  }
+}
+
+async function playTTS(text) {
+  const myToken = ++ttsToken;
+  stopCurrentAudio();
+
+  try {
+    isMinnaSpeaking = true;
+    if (myvad && conversationActive) myvad.pause();
+
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('minna-avatar').classList.add('speaking');
+    setStatus('Minna snakker...');
+
+    const response = await fetch(API_TTS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (myToken !== ttsToken) return;
+
+    if (!response.ok) throw new Error('TTS feilet');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    if (myToken !== ttsToken) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    stopCurrentAudio();
+    const audio = new Audio(url);
+    currentAudio = audio;
+
+    return new Promise((resolve) => {
+      audio.onended = () => {
+        if (audio !== currentAudio || myToken !== ttsToken) {
+          URL.revokeObjectURL(url);
+          resolve();
+          return;
+        }
+        document.getElementById('minna-avatar').classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+        isMinnaSpeaking = false;
+        setTimeout(() => {
+          if (myToken === ttsToken && conversationActive && myvad && !isMinnaSpeaking) {
+            myvad.start();
+            document.getElementById('mic-btn').classList.add('listening');
+            setStatus('Snakk når du er klar...', 'listening');
+          }
+          resolve();
+        }, 700);
+      };
+      audio.onerror = () => {
+        if (audio !== currentAudio) { resolve(); return; }
+        document.getElementById('minna-avatar').classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+        isMinnaSpeaking = false;
+        if (myToken === ttsToken && conversationActive && myvad) {
+          myvad.start();
+          document.getElementById('mic-btn').classList.add('listening');
+        }
+        resolve();
+      };
+      audio.play().catch(err => {
+        console.warn('audio.play() avvist:', err.message);
+        if (myToken === ttsToken) {
+          isMinnaSpeaking = false;
+          document.getElementById('minna-avatar').classList.remove('speaking');
+          if (conversationActive && myvad) {
+            myvad.start();
+            document.getElementById('mic-btn').classList.add('listening');
+          }
+        }
+        resolve();
+      });
+    });
+  } catch (e) {
+    if (myToken === ttsToken) {
+      isMinnaSpeaking = false;
+      document.getElementById('minna-avatar').classList.remove('speaking');
+      if (conversationActive && myvad) myvad.start();
+    }
+    console.error('TTS error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function addMessage(role, text, withReplay) {
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  msg.innerHTML = escapeHtml(text);
+  if (role === 'minna' && withReplay) {
+    const btn = document.createElement('button');
+    btn.className = 'replay-btn';
+    btn.textContent = '▶ Hør igjen';
+    btn.onclick = (e) => replayMessage(e.target, text);
+    msg.appendChild(document.createElement('br'));
+    msg.appendChild(btn);
+  }
+  document.getElementById('messages').appendChild(msg);
+  scrollToBottom();
+}
+
+async function replayMessage(btn, text) {
+  btn.disabled = true;
+  if (myvad) myvad.pause();
+  await playTTS(text);
+  btn.disabled = false;
+}
+
+function showTyping() { document.getElementById('typing').classList.add('visible'); scrollToBottom(); }
+function hideTyping() { document.getElementById('typing').classList.remove('visible'); }
+function scrollToBottom() {
+  const msgs = document.getElementById('messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function setStatus(text, cls) {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+function updateProgress() {
+  const pct = Math.min(100, Math.round((messageCount / (MAX_EXCHANGES * 2)) * 100));
+  document.getElementById('progress').textContent = `${messageCount} meldinger – ${pct}% ferdig`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO – Float32Array til WAV
+// ═══════════════════════════════════════════════════════════
+
+function float32ArrayToWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+// ═══════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════
+
+loadSession();
+</script>
+</body>
+</html>
