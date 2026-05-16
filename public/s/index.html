@@ -628,7 +628,11 @@ async function playTTS(text) {
 
     if (myToken !== ttsToken) return;
 
-    if (!response.ok) throw new Error('TTS feilet');
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error('TTS-feil fra server:', errData);
+      throw new Error('TTS feilet: ' + (errData.detail || errData.error || 'ukjent'));
+    }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
 
